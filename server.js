@@ -25,7 +25,7 @@ app.post('/build', async (req, res) => {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20251022',
+        model: 'claude-sonnet-4-5-20251001',
         max_tokens: 16000,
         system: systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.',
         messages: [{ role: 'user', content: userRequest }]
