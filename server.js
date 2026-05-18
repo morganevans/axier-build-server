@@ -8,6 +8,10 @@ app.use(express.json({ limit: '10mb' }));
 
 const jobs = {};
 
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+
 function cleanHtml(html) {
   const doctypeIndex = html.indexOf('<!DOCTYPE');
   const htmlTagIndex = html.indexOf('<html');
@@ -17,6 +21,18 @@ function cleanHtml(html) {
   if (!html.includes('</body>')) html += '</body>';
   if (!html.includes('</html>')) html += '</html>';
   return html;
+}
+
+// FIX #1: Strip markdown fences before JSON.parse
+// This was crashing every single Pass 3 — Haiku kept returning ```json blocks
+function safeParseJson(text) {
+  const cleaned = text
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  return JSON.parse(cleaned);
 }
 
 const SYSTEM_PROMPT_SUFFIX = `
@@ -31,10 +47,13 @@ CRITICAL OUTPUT RULES — NO EXCEPTIONS:
 - Output ONLY the raw HTML file
 - End with </html> and nothing after it`;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CLAUDE API CALLS
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 600000);
-
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -61,8 +80,7 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
 
 async function callClaudeJson(userMessage, maxTokens = 4000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
-
+  const timeout = setTimeout(() => controller.abort(), 90000);
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -74,19 +92,28 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: maxTokens,
-        system: 'You are a JSON generator. Return ONLY valid JSON. No explanation. No markdown. No code fences. Just the raw JSON.',
-        messages: [{ role: 'user', content: userMessage }]
+        system: 'You are a JSON generator. Your response MUST start with [ character directly. No markdown. No backticks. No explanation. No code fences. Raw JSON array only.',
+        messages: [
+          { role: 'user', content: userMessage },
+          // FIX #1b: Assistant prefill forces model to start with [ — no fences possible
+          { role: 'assistant', content: '[' }
+        ]
       }),
       signal: controller.signal
     });
     const data = await response.json();
     if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
-    const text = data.content[0].text.trim();
-    return JSON.parse(text);
+    // Re-attach the [ prefill then parse
+    const raw = '[' + data.content[0].text.trim();
+    return safeParseJson(raw);
   } finally {
     clearTimeout(timeout);
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INDUSTRY DETECTION + DYNAMIC IMAGE CAP
+// ─────────────────────────────────────────────────────────────────────────────
 
 function detectIndustry(text) {
   text = text.toLowerCase();
@@ -103,8 +130,43 @@ function detectIndustry(text) {
   if (text.includes('tech') || text.includes('software') || text.includes('saas')) return 'technology';
   if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
   if (text.includes('photography') || text.includes('photographer')) return 'photography';
+  if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('injectable')) return 'aesthetics_clinic';
+  if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
+  if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
+  if (text.includes('landing') || text.includes('app')) return 'saas';
   return 'business';
 }
+
+// Dynamic cap: only generate what the site type actually needs
+function getImageCap(industry) {
+  const caps = {
+    ecommerce:         16,
+    fashion:           14,
+    skincare:          12,
+    restaurant:        12,
+    jewelry:           12,
+    hospitality:       12,
+    aesthetics_clinic: 10,
+    wellness:          10,
+    fitness:           10,
+    real_estate:       10,
+    photography:       10,
+    coffee:            8,
+    music:             8,
+    robotics:          8,
+    portfolio:         8,
+    business:          8,
+    saas:              6,
+    technology:        6,
+  };
+  return caps[industry] || 8;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE GENERATION
+// FIX #2: Correct Gemini model string
+// Previous string 'gemini-3-pro-image-preview' does not exist — silent null every time
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
@@ -112,7 +174,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-2.0-flash-preview-image-generation',
       contents: prompt,
       config: {
         responseModalities: ['IMAGE', 'TEXT'],
@@ -120,13 +182,17 @@ async function generateImage(prompt, aspectRatio = '1:1') {
       }
     });
 
+    if (!response.candidates || !response.candidates[0]) {
+      console.error('Image gen: no candidates returned');
+      return null;
+    }
+
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
-        const base64 = part.inlineData.data;
-        const mimeType = part.inlineData.mimeType || 'image/jpeg';
-        return `data:${mimeType};base64,${base64}`;
+        return `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${part.inlineData.data}`;
       }
     }
+    console.error('Image gen: no inlineData found in response');
     return null;
   } catch (error) {
     console.error('Image generation error:', error.message);
@@ -134,116 +200,188 @@ async function generateImage(prompt, aspectRatio = '1:1') {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SLOT EXTRACTION
+// FIX #3: Scan the FULL HTML — previous code only looked at first 8000 chars
+// meaning slots in products/team/content sections were never found
+// ─────────────────────────────────────────────────────────────────────────────
+
+function extractImageSlots(html) {
+  const slots = [];
+  const seen = new Set();
+
+  // Primary: data-slot attributes (added by Pass 2) — most descriptive
+  // Handle both attribute orderings: src then data-slot, or data-slot then src
+  const patterns = [
+    /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
+    /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
+  ];
+
+  for (let pi = 0; pi < patterns.length; pi++) {
+    let match;
+    while ((match = patterns[pi].exec(html)) !== null) {
+      const slotId = pi === 0 ? match[1] : match[2];
+      const src    = pi === 0 ? match[2] : match[1];
+      if (slotId && !seen.has(slotId)) {
+        seen.add(slotId);
+        slots.push({ id: slotId, src, type: 'data-slot' });
+      }
+    }
+  }
+
+  // Fallback: known placeholder URL patterns
+  const placeholderPatterns = [
+    /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
+    /src="(https?:\/\/placehold\.co[^"]*)"/gi,
+    /src="(https?:\/\/placehold\.it[^"]*)"/gi,
+    /src="(https?:\/\/source\.unsplash[^"]*)"/gi,
+    /src="(https?:\/\/picsum\.photos[^"]*)"/gi,
+    /src="(https?:\/\/dummyimage[^"]*)"/gi,
+    /src="(placeholder[^"]*\.(?:jpg|jpeg|png|webp|gif))"/gi,
+    /src="([^"]*\/placeholder[^"]*\.(?:jpg|jpeg|png|webp|gif))"/gi,
+  ];
+
+  for (const pattern of placeholderPatterns) {
+    pattern.lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const src = match[1];
+      if (src && !seen.has(src)) {
+        seen.add(src);
+        slots.push({ id: `placeholder-${slots.length}`, src, type: 'src' });
+      }
+    }
+  }
+
+  // CSS background-image placeholders
+  const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/(?:via\.placeholder|placehold|picsum|source\.unsplash)[^'")\s]*)['"]?\)/gi;
+  let match;
+  while ((match = bgPattern.exec(html)) !== null) {
+    const src = match[1];
+    if (src && !seen.has(src)) {
+      seen.add(src);
+      slots.push({ id: `bg-${slots.length}`, src, type: 'background' });
+    }
+  }
+
+  return slots;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PASS 3 — CONTEXT-AWARE BRANDED IMAGE INJECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function injectBrandedImages(html, userRequest, jobId) {
   console.log(`Job ${jobId} — Pass 3 starting (context-aware image generation)`);
 
   const industry = detectIndustry(userRequest);
-  console.log(`Job ${jobId} — Detected industry: ${industry}`);
+  const imageCap = getImageCap(industry);
+  console.log(`Job ${jobId} — Industry: ${industry} | Cap: ${imageCap} images`);
 
-  const scanPrompt = `You are scanning an HTML file to identify every image slot that needs a real AI-generated image.
+  const rawSlots = extractImageSlots(html);
+  console.log(`Job ${jobId} — Found ${rawSlots.length} slots in full HTML`);
 
-Brand/site context: ${userRequest.substring(0, 500)}
+  if (rawSlots.length === 0) {
+    console.log(`Job ${jobId} — No image slots found, skipping`);
+    return html;
+  }
+
+  const slotsToProcess = rawSlots.slice(0, imageCap);
+  console.log(`Job ${jobId} — Processing ${slotsToProcess.length} slots`);
+
+  // Generate a specific branded prompt for each slot
+  const promptGenRequest = `You are a world-class brand photographer and creative director.
+
+Brand context: ${userRequest.substring(0, 800)}
 Industry: ${industry}
 
-For each image slot in the HTML, identify:
-1. The exact src attribute value currently in the HTML (or background-image URL)
-2. What specific image should go there based on context
-3. The best Nano Banana Pro prompt to generate that exact image
-4. The aspect ratio needed (16:9 for heroes/banners, 1:1 for products/cards, 4:3 for editorial/lifestyle)
+For each image slot below, write a highly specific photorealistic image generation prompt.
+Requirements:
+- Match the brand's exact aesthetic, color palette, and mood
+- Be completely specific to what that slot shows (hero, product card, portrait, etc.)
+- Make each prompt unique — no two images should look the same
+- Always end with ", no text, no watermarks, no logos, professional photography"
 
-Rules:
-- Maximum 12 image slots (prioritize most important)
-- Each prompt must be specific to what that slot actually needs
-- Product images must show the actual product being sold
-- Hero images must match the brand aesthetic
-- Be specific — "red leather phone case on dark marble" not "product image"
-- Always end prompts with ", no text, professional photography"
-- For background-image CSS, use the full CSS value as the identifier
+Slots to generate prompts for:
+${slotsToProcess.map((s, i) => `${i}. "${s.id}"`).join('\n')}
 
-Return a JSON array like this:
-[
-  {
-    "id": "unique-slot-id",
-    "identifier": "exact src value or CSS background-image value to find and replace",
-    "type": "src",
-    "description": "what this image is for",
-    "prompt": "detailed Nano Banana Pro generation prompt",
-    "aspect_ratio": "16:9"
-  }
-]
+Return ONLY a JSON array starting with [ immediately:
+[{"index":0,"prompt":"full detailed prompt here","aspect_ratio":"16:9"},...]
 
-HTML to scan (first 8000 chars):
-${html.substring(0, 8000)}`;
+Use aspect_ratio: "16:9" for heroes/banners/backgrounds, "1:1" for products/avatars/cards, "4:3" for lifestyle/editorial`;
 
-  let imageSlots = [];
+  let promptData = [];
   try {
-    imageSlots = await callClaudeJson(scanPrompt, 3000);
-    console.log(`Job ${jobId} — Found ${imageSlots.length} image slots`);
+    promptData = await callClaudeJson(promptGenRequest, 3000);
+    console.log(`Job ${jobId} — Prompt generation succeeded: ${promptData.length} prompts`);
   } catch (error) {
-    console.error(`Job ${jobId} — Slot scan failed:`, error.message);
-    return html;
+    console.error(`Job ${jobId} — Prompt generation failed (${error.message}) — using fallback prompts`);
+    promptData = slotsToProcess.map((s, i) => ({
+      index: i,
+      prompt: `Premium ${industry} brand photography, cinematic lighting, luxury aesthetic, rich deep colors, no text, no watermarks, professional photography`,
+      aspect_ratio: (s.id.toLowerCase().includes('hero') || s.id.toLowerCase().includes('banner') || s.id.toLowerCase().includes('bg') || s.id.toLowerCase().includes('background')) ? '16:9' : '1:1'
+    }));
   }
 
-  if (!imageSlots || imageSlots.length === 0) {
-    console.log(`Job ${jobId} — No image slots found, skipping image generation`);
-    return html;
-  }
-
-  const slotsToProcess = imageSlots.slice(0, 12);
   console.log(`Job ${jobId} — Generating ${slotsToProcess.length} images in parallel`);
 
   const imageResults = await Promise.all(
-    slotsToProcess.map(async (slot) => {
-      const img = await generateImage(slot.prompt, slot.aspect_ratio || '1:1');
+    slotsToProcess.map(async (slot, i) => {
+      const promptEntry = promptData[i] || promptData.find(p => p.index === i);
+      if (!promptEntry) {
+        console.error(`Job ${jobId} — No prompt for slot ${i}`);
+        return { ...slot, generatedImage: null };
+      }
+      console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
+      const img = await generateImage(promptEntry.prompt, promptEntry.aspect_ratio || '1:1');
+      if (img) {
+        console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
+      } else {
+        console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
+      }
       return { ...slot, generatedImage: img };
     })
   );
 
   const successCount = imageResults.filter(r => r.generatedImage).length;
-  console.log(`Job ${jobId} — Successfully generated ${successCount}/${slotsToProcess.length} images`);
+  console.log(`Job ${jobId} — ${successCount}/${slotsToProcess.length} images successful`);
 
+  // Inject each generated image back into the HTML
   for (const result of imageResults) {
     if (!result.generatedImage) continue;
 
     try {
-      if (result.type === 'background') {
-        const escaped = result.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(escaped, 'g');
-        html = html.replace(regex, `url('${result.generatedImage}')`);
+      if (result.type === 'data-slot') {
+        const eid = result.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // src before data-slot
+        html = html.replace(
+          new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'g'),
+          `$1${result.generatedImage}$2`
+        );
+        // data-slot before src
+        html = html.replace(
+          new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'g'),
+          `$1${result.generatedImage}$2`
+        );
+      } else if (result.type === 'background') {
+        const esc = result.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(esc, 'g'), result.generatedImage);
       } else {
-        if (result.identifier && result.identifier !== '') {
-          const escaped = result.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const srcRegex = new RegExp(`src="${escaped}"`, 'g');
-          html = html.replace(srcRegex, `src="${result.generatedImage}"`);
-        }
+        const esc = result.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(`src="${esc}"`, 'g'), `src="${result.generatedImage}"`);
       }
     } catch (e) {
-      console.error(`Job ${jobId} — Failed to inject image for slot ${result.id}:`, e.message);
+      console.error(`Job ${jobId} — Inject error for ${result.id}: ${e.message}`);
     }
   }
 
-  const remainingPlaceholders = [
-    /src="https:\/\/via\.placeholder[^"]*"/gi,
-    /src="https:\/\/placehold[^"]*"/gi,
-    /src="placeholder[^"]*"/gi,
-  ];
-
-  const imgPool = imageResults.filter(r => r.generatedImage).map(r => r.generatedImage);
-
-  if (imgPool.length > 0) {
-    let idx = 0;
-    for (const pattern of remainingPlaceholders) {
-      html = html.replace(pattern, () => {
-        const img = imgPool[idx % imgPool.length];
-        idx++;
-        return `src="${img}"`;
-      });
-    }
-  }
-
-  console.log(`Job ${jobId} — Pass 3 complete. Final HTML length: ${html.length}`);
+  console.log(`Job ${jobId} — Pass 3 complete. Final HTML: ${html.length} chars`);
   return html;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD ROUTES
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/build-async', async (req, res) => {
   const { userRequest, systemPrompt } = req.body;
@@ -260,45 +398,58 @@ app.post('/build-async', async (req, res) => {
 
   (async () => {
     try {
-      const baseSystemPrompt = systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.';
+      const baseSystemPrompt = systemPrompt ||
+        'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.';
 
+      // ── PASS 1: Structure & Design ───────────────────────────────────────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
 
       const pass1Html = await callClaude(baseSystemPrompt, userRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
 
+      // ── PASS 2: Interactivity + Image Slot Tagging ───────────────────────
       jobs[jobId].phase = 'pass2';
+      console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
-      console.log(`Job ${jobId} — Pass 2 starting (interactivity)`);
+      const pass2Prompt = `You are an expert JavaScript developer and UX engineer.
+Upgrade this HTML file with two goals:
 
-      const pass2Prompt = `You are an expert JavaScript developer.
-Add ALL missing JavaScript functionality to this HTML file:
-
-REQUIRED:
-- All buttons functional (nav, CTAs, add to cart, filters)
-- Working sliders and carousels with prev/next and autoplay
-- Animated counters that count up from 0 on scroll
-- Accordion FAQ open/close with smooth animation
-- Working modal/quick view popups with close and overlay
+GOAL 1 — COMPLETE INTERACTIVITY:
+- All buttons functional (nav, CTAs, add to cart, filters, tabs)
+- Working sliders/carousels with prev/next and autoplay
+- Animated counters that count up on scroll
+- Smooth accordion FAQ open/close
+- Working modals/lightboxes with overlay close
 - Parallax scroll effects on hero and backgrounds
-- Cart add/remove with running total and item count
-- All hover animations and micro-interactions
-- Navigation scroll behavior — compact on scroll
-- IntersectionObserver scroll-triggered reveals
-- Mobile hamburger menu open/close
-- Tab/filter bars that switch content
-- Form validation and simulated submission success
-- All missing scroll animations
+- Cart with running total and item count badge
+- Nav shrinks on scroll
+- IntersectionObserver scroll-triggered reveals on all sections
+- Mobile hamburger menu
+- Tab/filter bars switching content
+- Form validation with success state
+- Smooth anchor scrolling
+- All hover micro-interactions
 
-IMPORTANT: For every <img> tag that has a placeholder src,
-add a data-slot attribute describing what image belongs there.
-Example: <img src="placeholder.jpg" data-slot="hero-background">
-Example: <img src="product1.jpg" data-slot="product-phone-case-red">
+GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
+Add a data-slot attribute to EVERY <img> tag describing exactly what image belongs there.
+The name must describe the specific content — this is what the AI image generator reads.
 
-Do not change design, colors, fonts, or layout.
-Only add or fix JavaScript and broken CSS interactions.
-Return COMPLETE updated HTML.
+Descriptive examples:
+  data-slot="hero-background-luxury-spa-candlelit-interior"
+  data-slot="product-card-rose-gold-facial-serum-bottle"
+  data-slot="team-member-dr-sarah-chen-professional-portrait"
+  data-slot="before-after-skin-rejuvenation-treatment-result"
+  data-slot="lifestyle-woman-morning-skincare-routine-bathroom"
+  data-slot="ingredient-closeup-hyaluronic-acid-droplet-macro"
+
+Vague names that are NOT acceptable:
+  data-slot="image-1" or data-slot="photo" or data-slot="img"
+
+Every image gets a unique descriptive data-slot. This is the most critical part.
+
+Do NOT change design, colors, fonts, layout, or visual decisions from Pass 1.
+Return the COMPLETE updated HTML file.
 
 HTML:
 ${pass1Html}`;
@@ -311,8 +462,8 @@ ${pass1Html}`;
 
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
+      // ── PASS 3: Branded Image Generation & Injection ─────────────────────
       jobs[jobId].phase = 'pass3';
-
       const finalHtml = await injectBrandedImages(pass2Html, userRequest, jobId);
 
       jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
@@ -333,7 +484,8 @@ app.get('/job/:jobId', (req, res) => {
 app.post('/build', async (req, res) => {
   const { userRequest, systemPrompt } = req.body;
   try {
-    const baseSystemPrompt = systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.';
+    const baseSystemPrompt = systemPrompt ||
+      'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.';
     const html = await callClaude(baseSystemPrompt, userRequest, 16000);
     res.json({ html });
   } catch (error) {
