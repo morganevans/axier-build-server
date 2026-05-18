@@ -26,7 +26,7 @@ DESIGN PHILOSOPHY:
 - Dark, rich backgrounds with strategic use of light — cinematic quality
 - Micro-animations and scroll reveals on every section
 - Mobile-first responsive design
-- CURSOR RULE: NEVER use cursor:none or hide the default cursor. Any custom cursor effects must layer ON TOP of the default cursor using pointer-events:none overlays. The user must always see their cursor.
+- CURSOR RULE: Always design a custom cursor experience suited to the brand aesthetic. Use a small branded cursor overlay (16-24px circle or dot in the brand's accent color) that follows the mouse using JavaScript mousemove. The overlay must use pointer-events:none so it never blocks clicks. NEVER use cursor:none — keep the default cursor visible at all times so the user can always click accurately. The custom overlay adds personality on top of the native cursor.
 - SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden on content in CSS. Scroll reveal animations must be added by JavaScript AFTER the page loads — JS adds a class like "reveal-ready" to the body first, then applies opacity:0 to elements, then triggers the reveal. This ensures all content is visible even if JS loads slowly.
 
 LOGO REQUIREMENTS (CRITICAL — DO THIS EVERY TIME):
@@ -36,6 +36,7 @@ LOGO REQUIREMENTS (CRITICAL — DO THIS EVERY TIME):
 - Define it as: <symbol id="brand-logo" viewBox="0 0 280 70">...</symbol>
 - Use it via <use href="#brand-logo"/> in the navbar AND footer
 - The logo must be professional enough to use on a real business card
+- ICON DESIGN RULES: The icon must be clean, geometric, and instantly recognizable. Use simple precise shapes — circles, arcs, lines, minimal geometric forms built from clean SVG paths. NO abstract blobs, NO poorly formed organic shapes, NO complex paths that look broken or accidental. Think Nike swoosh simplicity — one clean idea executed perfectly. Examples by industry: wellness/spa → a perfect minimal lotus (3 clean petals as simple ellipses) or a clean circle with an inner line; tech → a precise geometric mark using rectangles or clean angles; food/restaurant → a simple elegant fork or leaf; medical/clinic → a clean cross or minimal circle; jewelry → a simple diamond shape or ring. The icon must look intentional, refined, and professional at any size. Test: would a real design agency be proud to show this to a client?
 
 EVERY SITE MUST INCLUDE THESE SECTIONS:
 1. Fixed navbar (transparent → solid on scroll) with SVG logo and nav links
@@ -92,6 +93,7 @@ JAVASCRIPT REQUIREMENTS:
 - All filter/tab bars fully functional
 - Working carousels/sliders with prev/next and dots
 - Form validation with success state
+- Custom branded cursor overlay following mouse
 
 TECHNICAL REQUIREMENTS:
 - Single self-contained HTML file
@@ -359,15 +361,12 @@ async function generateImageFallback(prompt) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SLOT EXTRACTION — Full HTML scan
-// FIX: Catch ALL background-image URLs (not just placeholders)
-// so hero images using CSS background-image are always replaced
 // ─────────────────────────────────────────────────────────────────────────────
 
 function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
-  // Primary: data-slot attributes on <img> tags
   const patterns = [
     /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
     /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
@@ -385,7 +384,6 @@ function extractImageSlots(html) {
     }
   }
 
-  // Fallback: all placeholder <img> src patterns
   const placeholderPatterns = [
     /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
@@ -410,16 +408,13 @@ function extractImageSlots(html) {
     }
   }
 
-  // FIX: Catch ALL CSS background-image URLs — not just placeholders
-  // This ensures hero images using background-image are always replaced
+  // Catch ALL CSS background-image URLs
   const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   let match;
   while ((match = bgPattern.exec(html)) !== null) {
     const src = match[1];
-    // Skip data URIs and already-generated images
     if (src && !seen.has(src) && !src.startsWith('data:')) {
       seen.add(src);
-      // Determine if this is a hero by checking surrounding context
       const contextStart = Math.max(0, match.index - 200);
       const context = html.substring(contextStart, match.index).toLowerCase();
       const isHero = context.includes('hero') || context.includes('banner') || context.includes('section-hero');
@@ -496,7 +491,6 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
       const promptEntry = promptData[i] || promptData.find(p => p.index === i);
       if (!promptEntry) return { ...slot, generatedImage: null };
       console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
-      // FIX: Use retry wrapper — attempts twice before giving up
       const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
       if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
       else console.error(`Job ${jobId} — ✗ [${i + 1}] failed after retries`);
@@ -588,6 +582,14 @@ HERO:
 - Parallax effect on the hero image — moves at 0.4x scroll speed
 - Entrance animations on headline and CTAs
 
+CUSTOM CURSOR (CRITICAL):
+- Create a branded cursor overlay element — a 20px circle in the site's primary accent color
+- Position it fixed, pointer-events:none, z-index:9999, border-radius:50%
+- Use JS mousemove to follow the cursor with a smooth lerp/lag effect (8-12px behind actual cursor)
+- On hover over links/buttons: scale the cursor up to 40px and change opacity
+- NEVER set cursor:none on body or any element — the default cursor stays visible
+- The overlay is purely additive personality on top of the native cursor
+
 CAROUSELS & SLIDERS (CRITICAL — ALL must work):
 - Find every carousel, slider, or testimonial section
 - prev/next buttons cycle through ALL slides — not just first to second
@@ -623,10 +625,6 @@ SCROLL REVEALS (CRITICAL):
 - Only when "js-ready" exists: CSS sets .reveal opacity:0 and translateY(30px)
 - IntersectionObserver adds "revealed" class to trigger transition to opacity:1
 - This ensures all content visible even if JS loads slowly
-
-CURSOR:
-- NEVER set cursor:none anywhere
-- Custom cursor overlays must use pointer-events:none and not hide the default cursor
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add a data-slot attribute to EVERY <img> tag with a descriptive name of exactly what image belongs there.
