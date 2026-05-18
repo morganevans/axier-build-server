@@ -26,7 +26,8 @@ DESIGN PHILOSOPHY:
 - Dark, rich backgrounds with strategic use of light — cinematic quality
 - Micro-animations and scroll reveals on every section
 - Mobile-first responsive design
-- CURSOR RULE: NEVER use cursor:none or hide the default cursor. Any custom cursor effects must layer ON TOP of the default cursor using pointer-events:none overlays. The user must always be able to see and use their cursor.
+- CURSOR RULE: NEVER use cursor:none or hide the default cursor. Any custom cursor effects must layer ON TOP of the default cursor using pointer-events:none overlays. The user must always see their cursor.
+- SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden on content in CSS. Scroll reveal animations must be added by JavaScript AFTER the page loads — JS adds a class like "reveal-ready" to the body first, then applies opacity:0 to elements, then triggers the reveal. This ensures all content is visible even if JS loads slowly.
 
 LOGO REQUIREMENTS (CRITICAL — DO THIS EVERY TIME):
 - Design a unique SVG logo for the brand based on their industry and brief
@@ -60,7 +61,7 @@ JAVASCRIPT REQUIREMENTS:
 - Navbar scroll behavior (transparent to solid)
 - Mobile hamburger menu
 - Smooth scroll to anchors
-- IntersectionObserver scroll reveals on all sections
+- IntersectionObserver scroll reveals on all sections (JS-only, never CSS opacity:0)
 - Animated number counters
 - Working FAQ accordion
 - Working image sliders/carousels if applicable
@@ -109,8 +110,7 @@ function safeParseJson(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE COMPRESSION — compress base64 image using sharp
-// Target: ~100kb per image so 10 images = ~1MB total HTML
+// IMAGE COMPRESSION
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
@@ -531,7 +531,8 @@ GOAL 1 — COMPLETE INTERACTIVITY:
 - Form validation with success state
 - Smooth anchor scrolling
 - All hover micro-interactions and transitions
-- IMPORTANT: Never set cursor:none — any custom cursor effects must use pointer-events:none overlays and keep the default cursor visible at all times
+- CURSOR: Never set cursor:none. Custom cursor effects must use pointer-events:none overlays only.
+- SCROLL REVEALS: Never set opacity:0 or visibility:hidden on content elements in CSS. All content must be visible by default. Scroll reveal animations work by JS adding a "js-ready" class to the body on DOMContentLoaded, then CSS targeting ".js-ready .reveal" sets opacity:0 and transform, then IntersectionObserver adds "revealed" class. This way content is always visible if JS fails or loads slowly.
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add a data-slot attribute to EVERY <img> tag describing exactly what image belongs there.
