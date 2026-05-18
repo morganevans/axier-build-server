@@ -26,6 +26,7 @@ DESIGN PHILOSOPHY:
 - Dark, rich backgrounds with strategic use of light — cinematic quality
 - Micro-animations and scroll reveals on every section
 - Mobile-first responsive design
+- CURSOR RULE: NEVER use cursor:none or hide the default cursor. Any custom cursor effects must layer ON TOP of the default cursor using pointer-events:none overlays. The user must always be able to see and use their cursor.
 
 LOGO REQUIREMENTS (CRITICAL — DO THIS EVERY TIME):
 - Design a unique SVG logo for the brand based on their industry and brief
@@ -108,38 +109,31 @@ function safeParseJson(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE COMPRESSION — compress base64 image to target size using sharp
+// IMAGE COMPRESSION — compress base64 image using sharp
 // Target: ~100kb per image so 10 images = ~1MB total HTML
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   try {
-    // Strip the data URL prefix to get raw base64
     const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) return base64DataUrl;
 
-    const mimeType = matches[1];
     const base64Data = matches[2];
     const inputBuffer = Buffer.from(base64Data, 'base64');
 
-    // Compress with sharp — resize to max width, convert to jpeg at 82% quality
     const outputBuffer = await sharp(inputBuffer)
-      .resize(targetWidthPx, null, {
-        withoutEnlargement: true,
-        fit: 'inside'
-      })
+      .resize(targetWidthPx, null, { withoutEnlargement: true, fit: 'inside' })
       .jpeg({ quality: 82, progressive: true })
       .toBuffer();
 
-    const compressedBase64 = outputBuffer.toString('base64');
     const originalKb = Math.round(inputBuffer.length / 1024);
     const compressedKb = Math.round(outputBuffer.length / 1024);
     console.log(`Image compressed: ${originalKb}kb → ${compressedKb}kb`);
 
-    return `data:image/jpeg;base64,${compressedBase64}`;
+    return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
   } catch (error) {
     console.error('Image compression error:', error.message);
-    return base64DataUrl; // Return original if compression fails
+    return base64DataUrl;
   }
 }
 
@@ -273,7 +267,6 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        // Compress before returning
         return await compressBase64Image(raw, 1200);
       }
     }
@@ -290,7 +283,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
 async function generateImageFallback(prompt) {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
-    console.log('Trying fallback model: gemini-2.5-flash-preview');
+    console.log('Trying fallback: gemini-2.5-flash-preview');
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
@@ -315,7 +308,7 @@ async function generateImageFallback(prompt) {
     }
     return null;
   } catch (error) {
-    console.error('Fallback image error:', error.message);
+    console.error('Fallback error:', error.message);
     return null;
   }
 }
@@ -499,7 +492,6 @@ app.post('/build-async', async (req, res) => {
   console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
 
-  // Force response immediately — prevents Base44 Deno timeout
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Connection', 'close');
   res.end(JSON.stringify({ jobId }));
@@ -539,6 +531,7 @@ GOAL 1 — COMPLETE INTERACTIVITY:
 - Form validation with success state
 - Smooth anchor scrolling
 - All hover micro-interactions and transitions
+- IMPORTANT: Never set cursor:none — any custom cursor effects must use pointer-events:none overlays and keep the default cursor visible at all times
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add a data-slot attribute to EVERY <img> tag describing exactly what image belongs there.
@@ -604,7 +597,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Test endpoint — confirm image generation + compression works
 app.get('/test-image', async (req, res) => {
   console.log('Test image endpoint hit');
   const result = await generateImage(
@@ -613,9 +605,9 @@ app.get('/test-image', async (req, res) => {
   );
   if (result) {
     const sizeKb = Math.round(result.length / 1024);
-    res.json({ success: true, message: `Image generated and compressed successfully — ${sizeKb}kb base64` });
+    res.json({ success: true, message: `Image generated and compressed — ${sizeKb}kb base64` });
   } else {
-    res.json({ success: false, message: 'Image generation failed — check deploy logs for error details' });
+    res.json({ success: false, message: 'Image generation failed — check deploy logs' });
   }
 });
 
