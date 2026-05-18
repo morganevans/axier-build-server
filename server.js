@@ -35,7 +35,7 @@ app.post('/build-async', async (req, res) => {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 32000,
+          max_tokens: 64000,
           system: systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.',
           messages: [{ role: 'user', content: userRequest }]
         })
