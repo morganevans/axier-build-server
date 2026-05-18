@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
+const sharp = require('sharp');
 
 const app = express();
 app.use(cors());
@@ -107,6 +108,42 @@ function safeParseJson(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// IMAGE COMPRESSION — compress base64 image to target size using sharp
+// Target: ~100kb per image so 10 images = ~1MB total HTML
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
+  try {
+    // Strip the data URL prefix to get raw base64
+    const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) return base64DataUrl;
+
+    const mimeType = matches[1];
+    const base64Data = matches[2];
+    const inputBuffer = Buffer.from(base64Data, 'base64');
+
+    // Compress with sharp — resize to max width, convert to jpeg at 82% quality
+    const outputBuffer = await sharp(inputBuffer)
+      .resize(targetWidthPx, null, {
+        withoutEnlargement: true,
+        fit: 'inside'
+      })
+      .jpeg({ quality: 82, progressive: true })
+      .toBuffer();
+
+    const compressedBase64 = outputBuffer.toString('base64');
+    const originalKb = Math.round(inputBuffer.length / 1024);
+    const compressedKb = Math.round(outputBuffer.length / 1024);
+    console.log(`Image compressed: ${originalKb}kb → ${compressedKb}kb`);
+
+    return `data:image/jpeg;base64,${compressedBase64}`;
+  } catch (error) {
+    console.error('Image compression error:', error.message);
+    return base64DataUrl; // Return original if compression fails
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CLAUDE API CALLS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -189,7 +226,7 @@ function detectIndustry(text) {
   if (text.includes('tech') || text.includes('software') || text.includes('saas')) return 'technology';
   if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
   if (text.includes('photography') || text.includes('photographer')) return 'photography';
-  if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('injectable')) return 'aesthetics_clinic';
+  if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('injectable') || text.includes('med spa') || text.includes('medspa')) return 'aesthetics_clinic';
   if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
   if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
   if (text.includes('landing') || text.includes('app')) return 'saas';
@@ -207,18 +244,13 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION
-// Using gemini-3-pro-image-preview (Nano Banana Pro) — highest quality
-// available on Google AI Studio key via v1beta generateContent API
+// IMAGE GENERATION — Nano Banana Pro with fallback
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) {
-      console.error('Image gen: GOOGLE_API_KEY not set');
-      return null;
-    }
+    if (!apiKey) { console.error('GOOGLE_API_KEY not set'); return null; }
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
@@ -227,24 +259,22 @@ async function generateImage(prompt, aspectRatio = '1:1') {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT']
-          }
+          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
         })
       }
     );
 
     const data = await response.json();
-
     if (!response.ok) {
       console.error('Image gen API error:', JSON.stringify(data));
-      // Fallback to Nano Banana (gemini-2.5-flash-image) if Pro fails
       return await generateImageFallback(prompt);
     }
 
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        // Compress before returning
+        return await compressBase64Image(raw, 1200);
       }
     }
 
@@ -257,11 +287,10 @@ async function generateImage(prompt, aspectRatio = '1:1') {
   }
 }
 
-// Fallback to Nano Banana if Pro is unavailable
 async function generateImageFallback(prompt) {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
-    console.log('Trying fallback model: gemini-2.5-flash-image');
+    console.log('Trying fallback model: gemini-2.5-flash-preview');
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
@@ -270,27 +299,23 @@ async function generateImageFallback(prompt) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseModalities: ['IMAGE', 'TEXT']
-          }
+          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
         })
       }
     );
 
     const data = await response.json();
-    if (!response.ok) {
-      console.error('Fallback image gen error:', JSON.stringify(data));
-      return null;
-    }
+    if (!response.ok) { console.error('Fallback error:', JSON.stringify(data)); return null; }
 
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
-        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+        return await compressBase64Image(raw, 1200);
       }
     }
     return null;
   } catch (error) {
-    console.error('Fallback image generation error:', error.message);
+    console.error('Fallback image error:', error.message);
     return null;
   }
 }
@@ -454,7 +479,8 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
     }
   }
 
-  console.log(`Job ${jobId} — Pass 3 complete. Final HTML: ${html.length} chars`);
+  const finalSizeMb = (html.length / 1024 / 1024).toFixed(2);
+  console.log(`Job ${jobId} — Pass 3 complete. Final HTML: ${html.length} chars (${finalSizeMb}MB)`);
   return html;
 }
 
@@ -578,10 +604,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TEST ENDPOINT — hit /test-image to confirm image generation works
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Test endpoint — confirm image generation + compression works
 app.get('/test-image', async (req, res) => {
   console.log('Test image endpoint hit');
   const result = await generateImage(
@@ -590,7 +613,7 @@ app.get('/test-image', async (req, res) => {
   );
   if (result) {
     const sizeKb = Math.round(result.length / 1024);
-    res.json({ success: true, message: `Image generated successfully — ${sizeKb}kb base64` });
+    res.json({ success: true, message: `Image generated and compressed successfully — ${sizeKb}kb base64` });
   } else {
     res.json({ success: false, message: 'Image generation failed — check deploy logs for error details' });
   }
