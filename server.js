@@ -51,7 +51,6 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 64000) {
   return cleanHtml(data.content[0].text);
 }
 
-// Detect industry from userRequest
 function detectIndustry(text) {
   text = text.toLowerCase();
   if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso') || text.includes('roast')) return 'coffee';
@@ -66,10 +65,10 @@ function detectIndustry(text) {
   if (text.includes('hotel') || text.includes('resort') || text.includes('travel') || text.includes('hospitality')) return 'hospitality';
   if (text.includes('music') || text.includes('artist') || text.includes('band') || text.includes('studio')) return 'music';
   if (text.includes('photography') || text.includes('photographer') || text.includes('photo')) return 'photography';
+  if (text.includes('robot') || text.includes('robotics') || text.includes('autonomous') || text.includes('nexery')) return 'robotics';
   return 'business';
 }
 
-// Build branded image prompts based on industry and brand info
 function buildImagePrompts(userRequest, industry) {
   const industryPrompts = {
     coffee: {
@@ -107,6 +106,12 @@ function buildImagePrompts(userRequest, industry) {
       product: 'premium tech device on dark minimal surface, professional product photography, dramatic side lighting, high tech aesthetic, no text',
       lifestyle: 'professional working on minimal tech setup, dark modern office, editorial photography, sophisticated digital aesthetic, no text',
       texture: 'dark circuit board or code on screen close up, dramatic lighting, technology texture detail, no text'
+    },
+    robotics: {
+      hero: 'futuristic industrial robotics facility, electric blue lighting, dark steel environment, cinematic wide angle, SpaceX aesthetic, no text',
+      product: 'precision robotic arm close up, dark background, electric blue glow, dramatic studio lighting, engineering aesthetic, no text',
+      lifestyle: 'engineer working with advanced robotics, dark lab environment, dramatic lighting, high-tech cinematic, no text',
+      texture: 'industrial metal surface close up, dark steel texture, electric blue highlights, precision engineering detail, no text'
     },
     luxury: {
       hero: 'luxury jewelry on dark velvet, dramatic studio lighting, gold and diamond details, premium brand photography, cinematic, no text',
@@ -155,7 +160,6 @@ function buildImagePrompts(userRequest, industry) {
   return industryPrompts[industry] || industryPrompts.business;
 }
 
-// Generate a single image using Nano Banana Pro (Gemini)
 async function generateImage(prompt, aspectRatio = '16:9') {
   try {
     const { GoogleGenAI } = require('@google/genai');
@@ -184,7 +188,6 @@ async function generateImage(prompt, aspectRatio = '16:9') {
   }
 }
 
-// Pass 3: Generate branded images and inject into HTML
 async function injectBrandedImages(html, userRequest, jobId) {
   console.log(`Job ${jobId} — Pass 3 starting (image generation)`);
 
@@ -193,7 +196,6 @@ async function injectBrandedImages(html, userRequest, jobId) {
 
   console.log(`Job ${jobId} — Detected industry: ${industry}`);
 
-  // Generate all 4 images in parallel
   const [heroImg, productImg, lifestyleImg, textureImg] = await Promise.all([
     generateImage(prompts.hero, '16:9'),
     generateImage(prompts.product, '1:1'),
@@ -203,61 +205,78 @@ async function injectBrandedImages(html, userRequest, jobId) {
 
   console.log(`Job ${jobId} — Images generated: hero=${!!heroImg}, product=${!!productImg}, lifestyle=${!!lifestyleImg}, texture=${!!textureImg}`);
 
-  // Inject images into HTML
-  // Replace common placeholder patterns
+  // Direct regex injection — no Claude call, no token limit issues
   if (heroImg) {
-    // Replace hero section background images
-    html = html.replace(/url\(['"]?(?:hero[-_]?(?:image|img|bg|background)?|placeholder[-_]?hero|#[0-9a-fA-F]{3,6})['"]?\)/gi, `url('${heroImg}')`);
+    // Replace background-image CSS with hero
+    html = html.replace(
+      /background-image:\s*url\(['"]?(?!data:)[^'")\s]*['"]?\)/gi,
+      `background-image: url('${heroImg}')`
+    );
     // Replace hero img tags
-    html = html.replace(/<img([^>]*?)(?:class="[^"]*hero[^"]*"|id="[^"]*hero[^"]*")([^>]*?)>/gi, `<img$1 src="${heroImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
+    html = html.replace(
+      /<img([^>]*?)class="([^"]*hero[^"]*)"([^>]*?)>/gi,
+      `<img$1class="$2"$3 src="${heroImg}" style="width:100%;height:100%;object-fit:cover;">`
+    );
+    // Replace src with hero/banner/placeholder keywords
+    html = html.replace(
+      /src="[^"]*(?:hero|banner|header-img|hero-img)[^"]*"/gi,
+      `src="${heroImg}"`
+    );
   }
 
   if (productImg) {
-    html = html.replace(/<img([^>]*?)(?:class="[^"]*product[^"]*"|alt="[^"]*product[^"]*")([^>]*?)>/gi, `<img$1 src="${productImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
+    html = html.replace(
+      /<img([^>]*?)class="([^"]*product[^"]*)"([^>]*?)>/gi,
+      `<img$1class="$2"$3 src="${productImg}" style="width:100%;height:100%;object-fit:cover;">`
+    );
+    html = html.replace(
+      /src="[^"]*(?:product|item|card-img|service-img)[^"]*"/gi,
+      `src="${productImg}"`
+    );
   }
 
   if (lifestyleImg) {
-    html = html.replace(/<img([^>]*?)(?:class="[^"]*lifestyle[^"]*"|alt="[^"]*lifestyle[^"]*")([^>]*?)>/gi, `<img$1 src="${lifestyleImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
-  }
-
-  // Also ask Claude to inject images properly
-  const injectPrompt = `You have a complete website HTML file. 
-I have generated these branded AI images as base64 data URLs:
-
-HERO IMAGE (16:9 cinematic): ${heroImg ? heroImg.substring(0, 100) + '...[base64]' : 'not available'}
-PRODUCT IMAGE (1:1 square): ${productImg ? productImg.substring(0, 100) + '...[base64]' : 'not available'}
-LIFESTYLE IMAGE (4:3): ${lifestyleImg ? lifestyleImg.substring(0, 100) + '...[base64]' : 'not available'}
-TEXTURE IMAGE (4:3): ${textureImg ? textureImg.substring(0, 100) + '...[base64]' : 'not available'}
-
-Replace the placeholder images and background images in the HTML with these real images:
-- Hero section background or main image → use HERO IMAGE
-- Product cards or feature images → use PRODUCT IMAGE  
-- Lifestyle or about section images → use LIFESTYLE IMAGE
-- Texture or background pattern images → use TEXTURE IMAGE
-
-Use these exact base64 data URLs:
-HERO: ${heroImg || 'none'}
-PRODUCT: ${productImg || 'none'}
-LIFESTYLE: ${lifestyleImg || 'none'}
-TEXTURE: ${textureImg || 'none'}
-
-Return the COMPLETE HTML with images injected. Do not change any design or code.
-
-HTML TO UPDATE:
-${html}`;
-
-  try {
-    const updatedHtml = await callClaude(
-      'You are an expert HTML developer. Inject the provided images into the HTML. Output ONLY the complete HTML file.',
-      injectPrompt,
-      16000
+    html = html.replace(
+      /<img([^>]*?)class="([^"]*(?:lifestyle|about|team)[^"]*)"([^>]*?)>/gi,
+      `<img$1class="$2"$3 src="${lifestyleImg}" style="width:100%;height:100%;object-fit:cover;">`
     );
-    console.log(`Job ${jobId} — Pass 3 complete. Final HTML length: ${updatedHtml.length}`);
-    return updatedHtml;
-  } catch (error) {
-    console.error(`Job ${jobId} — Pass 3 inject error:`, error.message);
-    return html; // Return original if injection fails
+    html = html.replace(
+      /src="[^"]*(?:lifestyle|about|team-img)[^"]*"/gi,
+      `src="${lifestyleImg}"`
+    );
   }
+
+  if (textureImg) {
+    html = html.replace(
+      /src="[^"]*(?:texture|bg-img|background-img|pattern)[^"]*"/gi,
+      `src="${textureImg}"`
+    );
+  }
+
+  // Replace any remaining placeholder image paths (common patterns Claude uses)
+  const placeholderPatterns = [
+    /src="placeholder[^"]*"/gi,
+    /src="[^"]*placeholder[^"]*"/gi,
+    /src="https:\/\/via\.placeholder[^"]*"/gi,
+    /src="https:\/\/placehold[^"]*"/gi,
+    /src="[^"]*\/images\/[^"]*\.(?:jpg|jpeg|png|webp)"/gi,
+  ];
+
+  let imgIndex = 0;
+  const imgPool = [heroImg, productImg, lifestyleImg, textureImg].filter(Boolean);
+
+  if (imgPool.length > 0) {
+    for (const pattern of placeholderPatterns) {
+      html = html.replace(pattern, () => {
+        const img = imgPool[imgIndex % imgPool.length];
+        imgIndex++;
+        return `src="${img}"`;
+      });
+    }
+  }
+
+  console.log(`Job ${jobId} — Pass 3 complete. Final HTML length: ${html.length}`);
+  return html;
 }
 
 app.post('/build-async', async (req, res) => {
