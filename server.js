@@ -6,10 +6,8 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// In-memory job store
 const jobs = {};
 
-// Clean HTML - strip any preamble before <!DOCTYPE
 function cleanHtml(html) {
   const doctypeIndex = html.indexOf('<!DOCTYPE');
   const htmlTagIndex = html.indexOf('<html');
@@ -33,7 +31,6 @@ CRITICAL OUTPUT RULES — NO EXCEPTIONS:
 - Output ONLY the raw HTML file
 - End with </html> and nothing after it`;
 
-// Call Anthropic API
 async function callClaude(systemPrompt, userMessage, maxTokens = 64000) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -49,31 +46,233 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 64000) {
       messages: [{ role: 'user', content: userMessage }]
     })
   });
-
   const data = await response.json();
-
-  if (data.error) {
-    throw new Error(`Anthropic error: ${data.error.message}`);
-  }
-
+  if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
   return cleanHtml(data.content[0].text);
 }
 
-// Start a build job - returns immediately with jobId
+// Detect industry from userRequest
+function detectIndustry(text) {
+  text = text.toLowerCase();
+  if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso') || text.includes('roast')) return 'coffee';
+  if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel') || text.includes('wear')) return 'fashion';
+  if (text.includes('restaurant') || text.includes('dining') || text.includes('food') || text.includes('bistro')) return 'restaurant';
+  if (text.includes('fitness') || text.includes('gym') || text.includes('workout') || text.includes('training')) return 'fitness';
+  if (text.includes('tech') || text.includes('software') || text.includes('saas') || text.includes('app')) return 'technology';
+  if (text.includes('real estate') || text.includes('property') || text.includes('homes') || text.includes('realty')) return 'real_estate';
+  if (text.includes('wellness') || text.includes('spa') || text.includes('yoga') || text.includes('meditation')) return 'wellness';
+  if (text.includes('skincare') || text.includes('beauty') || text.includes('cosmetic') || text.includes('botanical')) return 'skincare';
+  if (text.includes('jewelry') || text.includes('jewellery') || text.includes('luxury') || text.includes('fine')) return 'luxury';
+  if (text.includes('hotel') || text.includes('resort') || text.includes('travel') || text.includes('hospitality')) return 'hospitality';
+  if (text.includes('music') || text.includes('artist') || text.includes('band') || text.includes('studio')) return 'music';
+  if (text.includes('photography') || text.includes('photographer') || text.includes('photo')) return 'photography';
+  return 'business';
+}
+
+// Build branded image prompts based on industry and brand info
+function buildImagePrompts(userRequest, industry) {
+  const industryPrompts = {
+    coffee: {
+      hero: 'cinematic coffee shop interior, warm amber lighting, espresso machine steaming, dark wood surfaces, moody atmospheric photography, high-end editorial style, no text',
+      product: 'artisan coffee cup latte art on dark slate, professional food photography, bokeh background, warm tones, luxury cafe aesthetic, no text',
+      lifestyle: 'person enjoying coffee in minimalist luxury cafe, natural window light, editorial lifestyle photography, sophisticated atmosphere, no text',
+      texture: 'roasted coffee beans close up macro photography, dark background, warm brown tones, textural detail, premium quality aesthetic, no text'
+    },
+    fashion: {
+      hero: 'luxury fashion editorial photography, dramatic lighting, dark moody background, high fashion aesthetic, cinematic composition, no text, no people',
+      product: 'luxury clothing flat lay on dark marble, professional product photography, editorial styling, premium fashion brand aesthetic, no text',
+      lifestyle: 'high fashion editorial lifestyle, sophisticated model in luxury clothing, dramatic lighting, Vogue magazine aesthetic, cinematic, no text',
+      texture: 'luxury fabric texture close up, silk or cashmere detail, dark moody lighting, premium material photography, no text'
+    },
+    restaurant: {
+      hero: 'fine dining restaurant interior, candlelight ambiance, dark elegant atmosphere, luxury table setting, cinematic moody photography, no text',
+      product: 'gourmet dish plating on dark slate, professional food photography, dramatic lighting, Michelin star aesthetic, no text',
+      lifestyle: 'couple dining in luxury restaurant, intimate lighting, editorial lifestyle photography, sophisticated atmosphere, no text',
+      texture: 'fresh premium ingredients on dark surface, chef knife, culinary detail photography, moody dramatic lighting, no text'
+    },
+    fitness: {
+      hero: 'modern luxury gym interior, dramatic lighting, premium equipment, cinematic wide angle, athletic aesthetic, no text, no people',
+      product: 'premium fitness equipment close up, dark dramatic lighting, high contrast, athletic performance aesthetic, no text',
+      lifestyle: 'athlete training in luxury gym, dramatic side lighting, editorial sports photography, peak performance aesthetic, no text',
+      texture: 'athletic texture detail, dark background, high contrast dramatic lighting, performance material close up, no text'
+    },
+    skincare: {
+      hero: 'luxury skincare product arrangement, dark background, gold accents, botanical elements, dramatic studio lighting, premium brand aesthetic, no text',
+      product: 'premium skincare serum bottle on dark marble, professional product photography, gold foil details, botanical ingredients, luxury aesthetic, no text',
+      lifestyle: 'luxury skincare ritual, woman applying serum, soft dramatic lighting, editorial beauty photography, sophisticated aesthetic, no text',
+      texture: 'botanical ingredients close up, dark moody background, macro photography, natural luxury aesthetic, leaves herbs flowers, no text'
+    },
+    technology: {
+      hero: 'minimal dark tech workspace, laptop glowing screen, dark desk setup, premium technology aesthetic, cinematic moody lighting, no text',
+      product: 'premium tech device on dark minimal surface, professional product photography, dramatic side lighting, high tech aesthetic, no text',
+      lifestyle: 'professional working on minimal tech setup, dark modern office, editorial photography, sophisticated digital aesthetic, no text',
+      texture: 'dark circuit board or code on screen close up, dramatic lighting, technology texture detail, no text'
+    },
+    luxury: {
+      hero: 'luxury jewelry on dark velvet, dramatic studio lighting, gold and diamond details, premium brand photography, cinematic, no text',
+      product: 'luxury product close up on dark marble, professional product photography, dramatic lighting, premium aesthetic, no text',
+      lifestyle: 'luxury lifestyle editorial, sophisticated setting, dramatic lighting, high-end brand aesthetic, no text',
+      texture: 'luxury material texture close up, gold or precious metal detail, dark background, premium quality photography, no text'
+    },
+    hospitality: {
+      hero: 'luxury hotel lobby or suite interior, dramatic lighting, premium materials, cinematic architecture photography, no text, no people',
+      product: 'luxury hotel room detail, premium amenities, dramatic lighting, five star aesthetic, no text',
+      lifestyle: 'luxury resort lifestyle, pool at dusk, dramatic sky, editorial travel photography, sophisticated atmosphere, no text',
+      texture: 'luxury hotel detail close up, premium fabric or marble texture, dramatic lighting, five star quality, no text'
+    },
+    wellness: {
+      hero: 'luxury spa interior, zen atmosphere, candlelight, dark moody tones, premium wellness aesthetic, cinematic photography, no text, no people',
+      product: 'wellness products on dark stone, botanical elements, dramatic soft lighting, premium spa aesthetic, no text',
+      lifestyle: 'yoga meditation in luxury setting, dramatic natural light, editorial wellness photography, peaceful sophisticated atmosphere, no text',
+      texture: 'natural wellness ingredients close up, dark moody background, botanical texture, premium organic aesthetic, no text'
+    },
+    real_estate: {
+      hero: 'luxury modern home exterior at dusk, dramatic sky, premium architecture photography, cinematic lighting, no text',
+      product: 'luxury interior living room, dramatic lighting, premium materials, architectural photography, sophisticated design, no text',
+      lifestyle: 'luxury home lifestyle, terrace view at sunset, editorial real estate photography, aspirational living, no text',
+      texture: 'premium architectural detail close up, marble or wood texture, dramatic lighting, luxury material photography, no text'
+    },
+    music: {
+      hero: 'music studio dark dramatic atmosphere, vintage equipment glowing, cinematic moody photography, creative aesthetic, no text',
+      product: 'musical instrument dramatic close up, dark background, studio lighting, premium photography, no text',
+      lifestyle: 'musician in dramatic studio lighting, artistic editorial photography, creative atmosphere, no text',
+      texture: 'music equipment texture detail, dark moody background, dramatic lighting, creative studio aesthetic, no text'
+    },
+    photography: {
+      hero: 'dramatic dark photography studio setup, camera equipment, moody cinematic atmosphere, premium photography aesthetic, no text',
+      product: 'premium camera on dark surface, dramatic lighting, professional photography equipment, no text',
+      lifestyle: 'photographer working in dramatic light, editorial photography, cinematic composition, creative atmosphere, no text',
+      texture: 'camera lens or film texture close up, dark background, dramatic lighting, photography detail, no text'
+    },
+    business: {
+      hero: 'modern luxury office interior, dramatic lighting, premium materials, cinematic business photography, no text, no people',
+      product: 'premium business product or service visualization, dark minimal background, dramatic lighting, no text',
+      lifestyle: 'professional business setting, editorial photography, sophisticated atmosphere, no text',
+      texture: 'premium business material texture, dark background, dramatic lighting, professional aesthetic, no text'
+    }
+  };
+
+  return industryPrompts[industry] || industryPrompts.business;
+}
+
+// Generate a single image using Nano Banana Pro (Gemini)
+async function generateImage(prompt, aspectRatio = '16:9') {
+  try {
+    const { GoogleGenAI } = require('@google/genai');
+    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview',
+      contents: prompt,
+      config: {
+        responseModalities: ['IMAGE', 'TEXT'],
+        aspectRatio: aspectRatio
+      }
+    });
+
+    for (const part of response.candidates[0].content.parts) {
+      if (part.inlineData) {
+        const base64 = part.inlineData.data;
+        const mimeType = part.inlineData.mimeType || 'image/jpeg';
+        return `data:${mimeType};base64,${base64}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Image generation error:', error.message);
+    return null;
+  }
+}
+
+// Pass 3: Generate branded images and inject into HTML
+async function injectBrandedImages(html, userRequest, jobId) {
+  console.log(`Job ${jobId} — Pass 3 starting (image generation)`);
+
+  const industry = detectIndustry(userRequest);
+  const prompts = buildImagePrompts(userRequest, industry);
+
+  console.log(`Job ${jobId} — Detected industry: ${industry}`);
+
+  // Generate all 4 images in parallel
+  const [heroImg, productImg, lifestyleImg, textureImg] = await Promise.all([
+    generateImage(prompts.hero, '16:9'),
+    generateImage(prompts.product, '1:1'),
+    generateImage(prompts.lifestyle, '4:3'),
+    generateImage(prompts.texture, '4:3')
+  ]);
+
+  console.log(`Job ${jobId} — Images generated: hero=${!!heroImg}, product=${!!productImg}, lifestyle=${!!lifestyleImg}, texture=${!!textureImg}`);
+
+  // Inject images into HTML
+  // Replace common placeholder patterns
+  if (heroImg) {
+    // Replace hero section background images
+    html = html.replace(/url\(['"]?(?:hero[-_]?(?:image|img|bg|background)?|placeholder[-_]?hero|#[0-9a-fA-F]{3,6})['"]?\)/gi, `url('${heroImg}')`);
+    // Replace hero img tags
+    html = html.replace(/<img([^>]*?)(?:class="[^"]*hero[^"]*"|id="[^"]*hero[^"]*")([^>]*?)>/gi, `<img$1 src="${heroImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
+  }
+
+  if (productImg) {
+    html = html.replace(/<img([^>]*?)(?:class="[^"]*product[^"]*"|alt="[^"]*product[^"]*")([^>]*?)>/gi, `<img$1 src="${productImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
+  }
+
+  if (lifestyleImg) {
+    html = html.replace(/<img([^>]*?)(?:class="[^"]*lifestyle[^"]*"|alt="[^"]*lifestyle[^"]*")([^>]*?)>/gi, `<img$1 src="${lifestyleImg}"$2 style="width:100%;height:100%;object-fit:cover;">`);
+  }
+
+  // Also ask Claude to inject images properly
+  const injectPrompt = `You have a complete website HTML file. 
+I have generated these branded AI images as base64 data URLs:
+
+HERO IMAGE (16:9 cinematic): ${heroImg ? heroImg.substring(0, 100) + '...[base64]' : 'not available'}
+PRODUCT IMAGE (1:1 square): ${productImg ? productImg.substring(0, 100) + '...[base64]' : 'not available'}
+LIFESTYLE IMAGE (4:3): ${lifestyleImg ? lifestyleImg.substring(0, 100) + '...[base64]' : 'not available'}
+TEXTURE IMAGE (4:3): ${textureImg ? textureImg.substring(0, 100) + '...[base64]' : 'not available'}
+
+Replace the placeholder images and background images in the HTML with these real images:
+- Hero section background or main image → use HERO IMAGE
+- Product cards or feature images → use PRODUCT IMAGE  
+- Lifestyle or about section images → use LIFESTYLE IMAGE
+- Texture or background pattern images → use TEXTURE IMAGE
+
+Use these exact base64 data URLs:
+HERO: ${heroImg || 'none'}
+PRODUCT: ${productImg || 'none'}
+LIFESTYLE: ${lifestyleImg || 'none'}
+TEXTURE: ${textureImg || 'none'}
+
+Return the COMPLETE HTML with images injected. Do not change any design or code.
+
+HTML TO UPDATE:
+${html}`;
+
+  try {
+    const updatedHtml = await callClaude(
+      'You are an expert HTML developer. Inject the provided images into the HTML. Output ONLY the complete HTML file.',
+      injectPrompt,
+      16000
+    );
+    console.log(`Job ${jobId} — Pass 3 complete. Final HTML length: ${updatedHtml.length}`);
+    return updatedHtml;
+  } catch (error) {
+    console.error(`Job ${jobId} — Pass 3 inject error:`, error.message);
+    return html; // Return original if injection fails
+  }
+}
+
 app.post('/build-async', async (req, res) => {
   const { userRequest, systemPrompt } = req.body;
 
   const jobId = Date.now().toString();
-  jobs[jobId] = { status: 'pending', phase: 'building', html: null, error: null };
+  jobs[jobId] = { status: 'pending', phase: 'starting', html: null, error: null };
 
   console.log(`Job ${jobId} started`);
   console.log('systemPrompt length:', systemPrompt?.length);
   console.log('API key exists:', !!process.env.ANTHROPIC_API_KEY);
+  console.log('Google API key exists:', !!process.env.GOOGLE_API_KEY);
 
-  // Return jobId immediately
   res.json({ jobId });
 
-  // Two-pass build in background
   (async () => {
     try {
       const baseSystemPrompt = systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.';
@@ -91,40 +290,45 @@ app.post('/build-async', async (req, res) => {
       console.log(`Job ${jobId} — Pass 2 starting (interactivity)`);
 
       const pass2Prompt = `You are an expert JavaScript developer. 
-I have a website that needs all its interactive features completed.
 Add ALL missing JavaScript functionality to this HTML file:
 
-REQUIRED INTERACTIONS TO ADD OR FIX:
-- All buttons must be functional (nav, CTAs, add to cart, filters)
-- Working sliders and carousels with prev/next controls and autoplay
-- Animated counters that count up from 0 when scrolled into view
-- Accordion FAQ — clicking opens/closes with smooth animation
-- Working modal/quick view popups with close button and overlay
-- Parallax scroll effects on hero and background elements
-- Cart add/remove with running total and item count in nav
+REQUIRED:
+- All buttons functional (nav, CTAs, add to cart, filters)
+- Working sliders and carousels with prev/next and autoplay
+- Animated counters that count up from 0 on scroll
+- Accordion FAQ open/close with smooth animation
+- Working modal/quick view popups with close and overlay
+- Parallax scroll effects on hero and backgrounds
+- Cart add/remove with running total and item count
 - All hover animations and micro-interactions
-- Navigation scroll behavior — compact on scroll, smooth links
-- IntersectionObserver scroll-triggered reveals on all sections
-- Mobile hamburger menu that opens/closes
-- Any tabs or filter bars that switch content
-- Form validation and simulated submission success states
-- Any missing scroll animations or transitions
+- Navigation scroll behavior — compact on scroll
+- IntersectionObserver scroll-triggered reveals
+- Mobile hamburger menu open/close
+- Tab/filter bars that switch content
+- Form validation and simulated submission success
+- All missing scroll animations
 
-Do not change any design, colors, fonts, or layout.
-Only add or fix JavaScript and any broken CSS interactions.
-Return the COMPLETE updated HTML file with all interactions working.
+Do not change design, colors, fonts, or layout.
+Only add or fix JavaScript and broken CSS interactions.
+Return COMPLETE updated HTML.
 
-EXISTING HTML TO ENHANCE:
+HTML:
 ${pass1Html}`;
 
       const pass2Html = await callClaude(
-        'You are an expert JavaScript developer. Output ONLY a complete HTML file. No preamble. No explanation. Start with <!DOCTYPE html>.',
+        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>.',
         pass2Prompt,
         32000
       );
 
-      console.log(`Job ${jobId} — Pass 2 complete. Final HTML length: ${pass2Html.length}`);
-      jobs[jobId] = { status: 'done', phase: 'complete', html: pass2Html };
+      console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
+
+      jobs[jobId].phase = 'pass3';
+
+      // PASS 3: Image Generation
+      const finalHtml = await injectBrandedImages(pass2Html, userRequest, jobId);
+
+      jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
 
     } catch (error) {
       console.error(`Job ${jobId} error:`, error.message);
@@ -133,17 +337,14 @@ ${pass1Html}`;
   })();
 });
 
-// Poll job status
 app.get('/job/:jobId', (req, res) => {
   const job = jobs[req.params.jobId];
   if (!job) return res.status(404).json({ error: 'Job not found' });
   res.json(job);
 });
 
-// Legacy /build endpoint
 app.post('/build', async (req, res) => {
   const { userRequest, systemPrompt } = req.body;
-
   try {
     const baseSystemPrompt = systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.';
     const html = await callClaude(baseSystemPrompt, userRequest, 16000);
