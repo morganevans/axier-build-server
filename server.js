@@ -10,8 +10,6 @@ const jobs = {};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MASTER DESIGN SYSTEM PROMPT
-// Hardcoded here — never overridden by what Base44 sends.
-// This is what drives $10k-quality output.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MASTER_SYSTEM_PROMPT = `You are the world's best UI/UX designer and frontend developer combined.
@@ -438,8 +436,8 @@ app.post('/build-async', async (req, res) => {
   console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
 
-  // FIX: Force response to send immediately and close connection
-  // This prevents Base44's Deno function from timing out waiting for a response
+  // Force response to send immediately and close connection
+  // Prevents Base44 Deno function from timing out waiting for response
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Connection', 'close');
   res.end(JSON.stringify({ jobId }));
@@ -447,7 +445,6 @@ app.post('/build-async', async (req, res) => {
   // Build runs entirely in background after response is sent
   (async () => {
     try {
-
       // ── PASS 1: Full site structure, design, content, logo ───────────────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
@@ -544,6 +541,25 @@ app.post('/build', async (req, res) => {
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEST ENDPOINT — Confirm Imagen 3 works before running full build
+// Hit: https://axier-build-server-production.up.railway.app/test-image
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get('/test-image', async (req, res) => {
+  console.log('Test image endpoint hit');
+  const result = await generateImage(
+    'A premium luxury skincare serum bottle on white marble, cinematic lighting, no text, professional photography',
+    '1:1'
+  );
+  if (result) {
+    const sizeKb = Math.round(result.length / 1024);
+    res.json({ success: true, message: `Image generated successfully — ${sizeKb}kb base64` });
+  } else {
+    res.json({ success: false, message: 'Image generation failed — check deploy logs for error details' });
+  }
 });
 
 const PORT = process.env.PORT || 8080;
