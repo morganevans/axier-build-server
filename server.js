@@ -88,14 +88,11 @@ ABSOLUTE OUTPUT RULES — ZERO TOLERANCE:
 // ─────────────────────────────────────────────────────────────────────────────
 
 function cleanHtml(html) {
-  // Strip markdown fences
   html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
-  // Find the real start of the HTML document
   const doctypeIndex = html.indexOf('<!DOCTYPE');
   const htmlTagIndex = html.indexOf('<html');
   const startIndex = doctypeIndex !== -1 ? doctypeIndex : htmlTagIndex;
   if (startIndex > 0) html = html.substring(startIndex);
-  // Ensure closing tags
   if (!html.includes('</body>')) html += '\n</body>';
   if (!html.includes('</html>')) html += '\n</html>';
   return html;
@@ -137,7 +134,7 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
     const data = await response.json();
     if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
     const text = data.content[0].text;
-    console.log(`callClaude raw response length: ${text.length}, starts with: ${text.substring(0, 50)}`);
+    console.log(`callClaude raw response length: ${text.length}, starts with: ${text.substring(0, 80)}`);
     return cleanHtml(text);
   } finally {
     clearTimeout(timeout);
@@ -212,7 +209,7 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — Direct REST API (fixes v1beta SDK issue)
+// IMAGE GENERATION — Imagen 3 via direct REST API
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImage(prompt, aspectRatio = '1:1') {
@@ -271,7 +268,6 @@ function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
-  // Primary: data-slot attributes
   const patterns = [
     /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
     /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
@@ -289,7 +285,6 @@ function extractImageSlots(html) {
     }
   }
 
-  // Fallback: placeholder URL patterns (includes Unsplash since Pass 1 sometimes uses it)
   const placeholderPatterns = [
     /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
@@ -314,7 +309,6 @@ function extractImageSlots(html) {
     }
   }
 
-  // CSS background-image
   const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   let match;
   while ((match = bgPattern.exec(html)) !== null) {
@@ -350,7 +344,6 @@ async function injectBrandedImages(html, userRequest, jobId) {
   const slotsToProcess = rawSlots.slice(0, imageCap);
   console.log(`Job ${jobId} — Processing ${slotsToProcess.length} slots`);
 
-  // Generate branded prompts for each slot
   const promptGenRequest = `You are a world-class brand photographer and creative director.
 
 Brand context: ${userRequest.substring(0, 800)}
@@ -436,8 +429,6 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
 
 app.post('/build-async', async (req, res) => {
   const { userRequest } = req.body;
-  // NOTE: We intentionally ignore the incoming systemPrompt from Base44.
-  // The MASTER_SYSTEM_PROMPT above is always used — it drives $10k quality output.
 
   const jobId = Date.now().toString();
   jobs[jobId] = { status: 'pending', phase: 'starting', html: null, error: null };
@@ -447,8 +438,13 @@ app.post('/build-async', async (req, res) => {
   console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
 
-  res.json({ jobId });
+  // FIX: Force response to send immediately and close connection
+  // This prevents Base44's Deno function from timing out waiting for a response
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Connection', 'close');
+  res.end(JSON.stringify({ jobId }));
 
+  // Build runs entirely in background after response is sent
   (async () => {
     try {
 
