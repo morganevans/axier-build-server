@@ -50,30 +50,56 @@ EVERY SITE MUST INCLUDE THESE SECTIONS:
 10. Contact/CTA section with form
 11. Footer with logo, links, and copyright
 
-IMAGE PLACEHOLDERS (CRITICAL):
-- For EVERY image in the site use: src="https://placehold.co/WIDTHxHEIGHT"
-- Size the placeholder to match what the image needs (e.g. hero: 1920x1080, product: 600x600, portrait: 400x400)
-- DO NOT use Unsplash URLs, stock photo URLs, or any real image URLs
-- DO NOT use background-image CSS with real URLs
-- The image AI will replace all placehold.co URLs with real branded photos
+IMAGE REQUIREMENTS (CRITICAL):
+- For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
+- Size placeholders correctly: hero: 1920x1080, products: 600x600, portraits: 400x400, cards: 800x600
+- HERO SECTION: use an <img> tag with src="https://placehold.co/1920x1080" as the hero background image — do NOT use CSS background-image for the hero. Place the <img> absolutely behind the content with object-fit:cover and z-index:-1
+- DO NOT use Unsplash URLs, CSS background-image with real URLs, or any external image URLs
+- The image AI replaces all placehold.co URLs with real branded photos
+
+NAVBAR REQUIREMENTS (CRITICAL):
+- Initial state: fully transparent background, white/light text
+- On scroll past 80px: background becomes solid dark color (e.g. rgba(15,14,12,0.97)) with backdrop-filter:blur(20px)
+- The solid background MUST have sufficient opacity to make nav links clearly readable against any page content behind it
+- Add a subtle bottom border on scroll state for definition
+- JavaScript scroll listener handles the transition with a CSS class toggle
+
+FAQ REQUIREMENTS (CRITICAL):
+- Every FAQ item must have BOTH a question AND a full detailed answer
+- Answers must be 2-4 sentences of real, useful content — not placeholder text
+- The accordion open/close must work — clicking a question reveals its answer
+- Never leave FAQ answers empty or as placeholder text
+
+FILTER/TAB REQUIREMENTS (CRITICAL):
+- All filter buttons and tabs must be fully functional
+- Clicking any filter button shows the relevant content and hides other content
+- The active state styling must update on click
+- ALL tabs must work, not just the first one
+
+CAROUSEL/SLIDER REQUIREMENTS (CRITICAL):
+- All prev/next buttons must work and cycle through all slides
+- Auto-advance every 5 seconds
+- Navigation dots update to show current slide
+- Works correctly with any number of slides
 
 JAVASCRIPT REQUIREMENTS:
-- Navbar scroll behavior (transparent to solid)
+- Navbar scroll behavior (transparent to solid with visible background)
 - Mobile hamburger menu
 - Smooth scroll to anchors
-- IntersectionObserver scroll reveals on all sections (JS-only, never CSS opacity:0)
+- IntersectionObserver scroll reveals (JS-only, never CSS opacity:0 on content)
 - Animated number counters
-- Working FAQ accordion
-- Working image sliders/carousels if applicable
-- Form validation
+- Working FAQ accordion with full answers
+- All filter/tab bars fully functional
+- Working carousels/sliders with prev/next and dots
+- Form validation with success state
 
 TECHNICAL REQUIREMENTS:
 - Single self-contained HTML file
-- All CSS in <style> tags — no external CSS files
-- All JS in <script> tags — no external JS files
-- Google Fonts via @import in the style tag
+- All CSS in <style> tags
+- All JS in <script> tags
+- Google Fonts via @import
 - Minimum 1000 lines of code
-- Must look pixel-perfect on both mobile and desktop`;
+- Pixel-perfect on mobile and desktop`;
 
 const HTML_OUTPUT_RULES = `
 
@@ -321,6 +347,7 @@ function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
+  // Primary: data-slot attributes
   const patterns = [
     /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
     /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
@@ -338,6 +365,7 @@ function extractImageSlots(html) {
     }
   }
 
+  // Fallback: placeholder URL patterns
   const placeholderPatterns = [
     /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
@@ -362,6 +390,7 @@ function extractImageSlots(html) {
     }
   }
 
+  // CSS background-image placeholders
   const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   let match;
   while ((match = bgPattern.exec(html)) !== null) {
@@ -516,49 +545,83 @@ app.post('/build-async', async (req, res) => {
       const pass2Prompt = `You are an expert JavaScript developer and UX engineer.
 Upgrade this HTML file with two goals:
 
-GOAL 1 — COMPLETE INTERACTIVITY:
-- All buttons functional (nav, CTAs, add to cart, filters, tabs)
-- Working sliders/carousels with prev/next and autoplay
-- Animated counters that count up on scroll
-- Smooth accordion FAQ open/close
-- Working modals/lightboxes with overlay close
-- Parallax scroll effects on hero and backgrounds
-- Cart with running total and item count badge
-- Nav shrinks/becomes solid on scroll
-- IntersectionObserver scroll-triggered reveals on all sections
-- Mobile hamburger menu open/close
-- Tab/filter bars switching content
-- Form validation with success state
-- Smooth anchor scrolling
-- All hover micro-interactions and transitions
-- CURSOR: Never set cursor:none. Custom cursor effects must use pointer-events:none overlays only.
-- SCROLL REVEALS: Never set opacity:0 or visibility:hidden on content elements in CSS. All content must be visible by default. Scroll reveal animations work by JS adding a "js-ready" class to the body on DOMContentLoaded, then CSS targeting ".js-ready .reveal" sets opacity:0 and transform, then IntersectionObserver adds "revealed" class. This way content is always visible if JS fails or loads slowly.
+GOAL 1 — COMPLETE INTERACTIVITY (every item below is mandatory):
+
+NAVBAR:
+- On scroll past 80px add a class "scrolled" to the navbar
+- When "scrolled": background becomes solid dark (rgba(15,14,12,0.97)), backdrop-filter:blur(20px), visible bottom border
+- This MUST make nav links clearly readable against any background
+- Mobile hamburger menu that opens/closes a full nav overlay
+
+HERO:
+- Parallax effect on the hero image — moves at 0.4x scroll speed
+- Entrance animations on headline and CTAs
+
+CAROUSELS & SLIDERS (CRITICAL — ALL must work):
+- Find every carousel, slider, or testimonial section
+- prev/next buttons cycle through ALL slides — not just first to second
+- Auto-advance every 5 seconds
+- Navigation dots highlight current slide and clicking them navigates to that slide
+- Wrap around at the end back to the beginning
+
+FILTER TABS (CRITICAL — ALL must work):
+- Find every tab bar, filter bar, or category selector
+- Clicking ANY tab shows its content and hides other content
+- Active state styling updates on every click
+- ALL tabs must work, not just the first one
+- Use data-filter or data-tab attributes to match buttons to content
+
+FAQ ACCORDION (CRITICAL):
+- Every FAQ item must have a visible question AND a complete answer
+- If any answer is missing or empty, add appropriate answer content
+- Clicking a question toggles its answer open/closed with smooth animation
+- Only one answer open at a time (close others when one opens)
+
+COUNTERS:
+- Animated number counters that count up when scrolled into view
+- Use IntersectionObserver — not scroll events
+
+FORMS:
+- Validate all required fields on submit
+- Show success message on valid submission
+- Show error states on invalid fields
+
+SCROLL REVEALS (CRITICAL):
+- NEVER set opacity:0 or visibility:hidden in CSS on content elements
+- Add "js-ready" class to body on DOMContentLoaded
+- Only when "js-ready" exists: CSS sets .reveal opacity:0 and translateY(30px)
+- IntersectionObserver adds "revealed" class to trigger transition to opacity:1
+- This ensures all content visible even if JS loads slowly
+
+CURSOR:
+- NEVER set cursor:none anywhere
+- Custom cursor overlays must use pointer-events:none and not hide the default cursor
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
-Add a data-slot attribute to EVERY <img> tag describing exactly what image belongs there.
-The name must describe the specific content needed — this drives the AI image generator.
+Add a data-slot attribute to EVERY <img> tag with a descriptive name of exactly what image belongs there.
+This name drives the AI image generator — be specific and descriptive.
 
 Good examples:
-  data-slot="hero-background-luxury-spa-candlelit-golden-hour"
-  data-slot="product-card-rose-gold-facial-serum-dropper-bottle"
-  data-slot="team-member-founder-professional-portrait-studio"
-  data-slot="before-after-skin-rejuvenation-30-day-result"
-  data-slot="lifestyle-woman-morning-skincare-bathroom-routine"
-  data-slot="ingredient-hyaluronic-acid-droplet-macro-closeup"
+  data-slot="hero-background-luxury-medspa-interior-candlelit-golden-warmth"
+  data-slot="product-card-vitamin-c-brightening-serum-amber-glass-bottle"
+  data-slot="team-member-dr-sarah-chen-female-physician-professional-studio-portrait"
+  data-slot="before-after-skin-rejuvenation-hydration-treatment-result"
+  data-slot="lifestyle-woman-morning-luxury-skincare-bathroom-routine-soft-light"
+  data-slot="about-section-clinic-interior-modern-treatment-room-warm-tones"
 
-Bad examples (never use these):
-  data-slot="image-1" or data-slot="photo" or data-slot="img"
+Bad examples — never use:
+  data-slot="image-1" or data-slot="photo" or data-slot="img" or data-slot="picture"
 
-Every single image gets a unique, descriptive data-slot. This is critical.
+Every single <img> tag gets a unique descriptive data-slot. No exceptions.
 
-Do NOT change design, colors, fonts, layout, or any visual decisions from Pass 1.
-Return the COMPLETE updated HTML file.
+Do NOT change any design decisions, colors, fonts, layout, or visual style from Pass 1.
+Return the COMPLETE updated HTML file — every line, nothing truncated.
 
 HTML:
 ${pass1Html}`;
 
       const pass2Html = await callClaude(
-        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>.',
+        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Never truncate or abbreviate — return every line.',
         pass2Prompt,
         32000
       );
