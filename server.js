@@ -1,13 +1,37 @@
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
-
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // In-memory job store
 const jobs = {};
+
+// Clean HTML - strip any preamble before <!DOCTYPE
+function cleanHtml(html) {
+  const doctypeIndex = html.indexOf('<!DOCTYPE');
+  const htmlTagIndex = html.indexOf('<html');
+  const startIndex = doctypeIndex !== -1 ? doctypeIndex : htmlTagIndex;
+  if (startIndex > 0) html = html.substring(startIndex);
+  // Strip markdown fences if present
+  html = html.replace(/^```html\n?/i, '').replace(/```\s*$/i, '');
+  if (!html.includes('</body>')) html += '</body>';
+  if (!html.includes('</html>')) html += '</html>';
+  return html;
+}
+
+const SYSTEM_PROMPT_SUFFIX = `
+
+CRITICAL OUTPUT RULES — NO EXCEPTIONS:
+- Your response must begin with <!DOCTYPE html> and nothing else
+- The very first character of your response must be "<"
+- No explanation before the code
+- No preamble sentence
+- No markdown code fences
+- No "I'll build..." or "Here is..." or any text before the HTML
+- Output ONLY the raw HTML file
+- End with </html> and nothing after it`;
 
 // Start a build job - returns immediately with jobId
 app.post('/build-async', async (req, res) => {
@@ -26,6 +50,8 @@ app.post('/build-async', async (req, res) => {
   // Build in background
   (async () => {
     try {
+      const finalSystemPrompt = (systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.') + SYSTEM_PROMPT_SUFFIX;
+
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -36,7 +62,7 @@ app.post('/build-async', async (req, res) => {
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 64000,
-          system: systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.',
+          system: finalSystemPrompt,
           messages: [{ role: 'user', content: userRequest }]
         })
       });
@@ -50,10 +76,7 @@ app.post('/build-async', async (req, res) => {
         return;
       }
 
-      let html = data.content[0].text;
-      if (!html.includes('</body>')) html += '</body>';
-      if (!html.includes('</html>')) html += '</html>';
-      
+      const html = cleanHtml(data.content[0].text);
       console.log(`Job ${jobId} complete. HTML length:`, html.length);
       jobs[jobId] = { status: 'done', html };
 
@@ -76,6 +99,8 @@ app.post('/build', async (req, res) => {
   const { userRequest, systemPrompt } = req.body;
   
   try {
+    const finalSystemPrompt = (systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.') + SYSTEM_PROMPT_SUFFIX;
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -86,7 +111,7 @@ app.post('/build', async (req, res) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 16000,
-        system: systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>.',
+        system: finalSystemPrompt,
         messages: [{ role: 'user', content: userRequest }]
       })
     });
@@ -94,10 +119,9 @@ app.post('/build', async (req, res) => {
     const data = await response.json();
     if (data.error) return res.status(500).json({ error: data.error.message });
     
-    let html = data.content[0].text;
-    if (!html.includes('</html>')) html += '</html>';
-    
+    const html = cleanHtml(data.content[0].text);
     res.json({ html });
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
