@@ -53,8 +53,8 @@ EVERY SITE MUST INCLUDE THESE SECTIONS:
 IMAGE REQUIREMENTS (CRITICAL):
 - For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
 - Size placeholders correctly: hero: 1920x1080, products: 600x600, portraits: 400x400, cards: 800x600
-- HERO SECTION: use an <img> tag with src="https://placehold.co/1920x1080" as the hero background image — do NOT use CSS background-image for the hero. Place the <img> absolutely behind the content with object-fit:cover and z-index:-1
-- DO NOT use Unsplash URLs, CSS background-image with real URLs, or any external image URLs
+- HERO SECTION: ALWAYS use an <img> tag with src="https://placehold.co/1920x1080" as the hero background image — do NOT use CSS background-image for the hero. Place the <img> absolutely positioned behind the content with position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Put a dark overlay div above it (z-index:1) and content above that (z-index:2).
+- DO NOT use Unsplash URLs, CSS background-image with real URLs, or any external image URLs anywhere
 - The image AI replaces all placehold.co URLs with real branded photos
 
 NAVBAR REQUIREMENTS (CRITICAL):
@@ -264,8 +264,26 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — Nano Banana Pro with fallback
+// IMAGE GENERATION — with retry
 // ─────────────────────────────────────────────────────────────────────────────
+
+async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const result = await generateImage(prompt, aspectRatio);
+      if (result) return result;
+      if (attempt < maxAttempts) {
+        console.log(`Image gen attempt ${attempt} returned null — retrying...`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    } catch (error) {
+      console.error(`Image gen attempt ${attempt} error: ${error.message}`);
+      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+  console.error(`Image gen failed after ${maxAttempts} attempts`);
+  return null;
+}
 
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
@@ -341,13 +359,15 @@ async function generateImageFallback(prompt) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SLOT EXTRACTION — Full HTML scan
+// FIX: Catch ALL background-image URLs (not just placeholders)
+// so hero images using CSS background-image are always replaced
 // ─────────────────────────────────────────────────────────────────────────────
 
 function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
-  // Primary: data-slot attributes
+  // Primary: data-slot attributes on <img> tags
   const patterns = [
     /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
     /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
@@ -365,7 +385,7 @@ function extractImageSlots(html) {
     }
   }
 
-  // Fallback: placeholder URL patterns
+  // Fallback: all placeholder <img> src patterns
   const placeholderPatterns = [
     /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
@@ -390,14 +410,24 @@ function extractImageSlots(html) {
     }
   }
 
-  // CSS background-image placeholders
+  // FIX: Catch ALL CSS background-image URLs — not just placeholders
+  // This ensures hero images using background-image are always replaced
   const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   let match;
   while ((match = bgPattern.exec(html)) !== null) {
     const src = match[1];
-    if (src && !seen.has(src) && (src.includes('placehold') || src.includes('unsplash') || src.includes('picsum'))) {
+    // Skip data URIs and already-generated images
+    if (src && !seen.has(src) && !src.startsWith('data:')) {
       seen.add(src);
-      slots.push({ id: `bg-${slots.length}`, src, type: 'background' });
+      // Determine if this is a hero by checking surrounding context
+      const contextStart = Math.max(0, match.index - 200);
+      const context = html.substring(contextStart, match.index).toLowerCase();
+      const isHero = context.includes('hero') || context.includes('banner') || context.includes('section-hero');
+      slots.push({
+        id: isHero ? `hero-background-fullscreen` : `bg-${slots.length}`,
+        src,
+        type: 'background'
+      });
     }
   }
 
@@ -466,9 +496,10 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
       const promptEntry = promptData[i] || promptData.find(p => p.index === i);
       if (!promptEntry) return { ...slot, generatedImage: null };
       console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
-      const img = await generateImage(promptEntry.prompt, promptEntry.aspect_ratio || '1:1');
+      // FIX: Use retry wrapper — attempts twice before giving up
+      const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
       if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
-      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
+      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed after retries`);
       return { ...slot, generatedImage: img };
     })
   );
@@ -663,9 +694,10 @@ app.get('/health', (req, res) => {
 
 app.get('/test-image', async (req, res) => {
   console.log('Test image endpoint hit');
-  const result = await generateImage(
+  const result = await generateImageWithRetry(
     'A premium luxury skincare serum bottle on white marble, cinematic lighting, no text, professional photography',
-    '1:1'
+    '1:1',
+    2
   );
   if (result) {
     const sizeKb = Math.round(result.length / 1024);
