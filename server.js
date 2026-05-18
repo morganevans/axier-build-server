@@ -31,45 +31,61 @@ CRITICAL OUTPUT RULES — NO EXCEPTIONS:
 - Output ONLY the raw HTML file
 - End with </html> and nothing after it`;
 
-async function callClaude(systemPrompt, userMessage, maxTokens = 64000) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      system: systemPrompt + SYSTEM_PROMPT_SUFFIX,
-      messages: [{ role: 'user', content: userMessage }]
-    })
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
-  return cleanHtml(data.content[0].text);
+async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 600000);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        system: systemPrompt + SYSTEM_PROMPT_SUFFIX,
+        messages: [{ role: 'user', content: userMessage }]
+      }),
+      signal: controller.signal
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
+    return cleanHtml(data.content[0].text);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function callClaudeJson(userMessage, maxTokens = 4000) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: maxTokens,
-      system: 'You are a JSON generator. Return ONLY valid JSON. No explanation. No markdown. No code fences. Just the raw JSON.',
-      messages: [{ role: 'user', content: userMessage }]
-    })
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
-  const text = data.content[0].text.trim();
-  return JSON.parse(text);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: maxTokens,
+        system: 'You are a JSON generator. Return ONLY valid JSON. No explanation. No markdown. No code fences. Just the raw JSON.',
+        messages: [{ role: 'user', content: userMessage }]
+      }),
+      signal: controller.signal
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
+    const text = data.content[0].text.trim();
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function detectIndustry(text) {
@@ -90,7 +106,6 @@ function detectIndustry(text) {
   return 'business';
 }
 
-// Generate a single image using Nano Banana Pro (Gemini)
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const { GoogleGenAI } = require('@google/genai');
@@ -119,14 +134,12 @@ async function generateImage(prompt, aspectRatio = '1:1') {
   }
 }
 
-// Pass 3: Context-aware image generation and injection
 async function injectBrandedImages(html, userRequest, jobId) {
   console.log(`Job ${jobId} — Pass 3 starting (context-aware image generation)`);
 
   const industry = detectIndustry(userRequest);
   console.log(`Job ${jobId} — Detected industry: ${industry}`);
 
-  // Step 1: Ask Claude (Haiku, fast + cheap) to scan HTML and identify image slots
   const scanPrompt = `You are scanning an HTML file to identify every image slot that needs a real AI-generated image.
 
 Brand/site context: ${userRequest.substring(0, 500)}
@@ -152,10 +165,10 @@ Return a JSON array like this:
   {
     "id": "unique-slot-id",
     "identifier": "exact src value or CSS background-image value to find and replace",
-    "type": "src" or "background",
+    "type": "src",
     "description": "what this image is for",
     "prompt": "detailed Nano Banana Pro generation prompt",
-    "aspect_ratio": "16:9" or "1:1" or "4:3"
+    "aspect_ratio": "16:9"
   }
 ]
 
@@ -168,7 +181,6 @@ ${html.substring(0, 8000)}`;
     console.log(`Job ${jobId} — Found ${imageSlots.length} image slots`);
   } catch (error) {
     console.error(`Job ${jobId} — Slot scan failed:`, error.message);
-    // Fallback to basic injection
     return html;
   }
 
@@ -177,7 +189,6 @@ ${html.substring(0, 8000)}`;
     return html;
   }
 
-  // Step 2: Generate all images in parallel (max 12)
   const slotsToProcess = imageSlots.slice(0, 12);
   console.log(`Job ${jobId} — Generating ${slotsToProcess.length} images in parallel`);
 
@@ -191,18 +202,15 @@ ${html.substring(0, 8000)}`;
   const successCount = imageResults.filter(r => r.generatedImage).length;
   console.log(`Job ${jobId} — Successfully generated ${successCount}/${slotsToProcess.length} images`);
 
-  // Step 3: Inject each generated image into its exact slot
   for (const result of imageResults) {
     if (!result.generatedImage) continue;
 
     try {
       if (result.type === 'background') {
-        // Replace CSS background-image
         const escaped = result.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(escaped, 'g');
         html = html.replace(regex, `url('${result.generatedImage}')`);
       } else {
-        // Replace img src
         if (result.identifier && result.identifier !== '') {
           const escaped = result.identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const srcRegex = new RegExp(`src="${escaped}"`, 'g');
@@ -214,16 +222,13 @@ ${html.substring(0, 8000)}`;
     }
   }
 
-  // Also catch any remaining common placeholder patterns
   const remainingPlaceholders = [
     /src="https:\/\/via\.placeholder[^"]*"/gi,
     /src="https:\/\/placehold[^"]*"/gi,
     /src="placeholder[^"]*"/gi,
   ];
 
-  const imgPool = imageResults
-    .filter(r => r.generatedImage)
-    .map(r => r.generatedImage);
+  const imgPool = imageResults.filter(r => r.generatedImage).map(r => r.generatedImage);
 
   if (imgPool.length > 0) {
     let idx = 0;
@@ -257,16 +262,14 @@ app.post('/build-async', async (req, res) => {
     try {
       const baseSystemPrompt = systemPrompt || 'You are an expert frontend developer. Output ONLY a single self-contained HTML file starting with <!DOCTYPE html>. Nothing before it. Nothing after </html>.';
 
-      // PASS 1: Structure & Design
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
 
-      const pass1Html = await callClaude(baseSystemPrompt, userRequest, 64000);
+      const pass1Html = await callClaude(baseSystemPrompt, userRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
 
       jobs[jobId].phase = 'pass2';
 
-      // PASS 2: Interactivity
       console.log(`Job ${jobId} — Pass 2 starting (interactivity)`);
 
       const pass2Prompt = `You are an expert JavaScript developer.
@@ -292,7 +295,6 @@ IMPORTANT: For every <img> tag that has a placeholder src,
 add a data-slot attribute describing what image belongs there.
 Example: <img src="placeholder.jpg" data-slot="hero-background">
 Example: <img src="product1.jpg" data-slot="product-phone-case-red">
-This helps the image generation system know what to generate.
 
 Do not change design, colors, fonts, or layout.
 Only add or fix JavaScript and broken CSS interactions.
@@ -311,7 +313,6 @@ ${pass1Html}`;
 
       jobs[jobId].phase = 'pass3';
 
-      // PASS 3: Context-aware image generation
       const finalHtml = await injectBrandedImages(pass2Html, userRequest, jobId);
 
       jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
