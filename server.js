@@ -207,7 +207,9 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — Imagen 3 via direct REST API
+// IMAGE GENERATION
+// Using gemini-3-pro-image-preview (Nano Banana Pro) — highest quality
+// available on Google AI Studio key via v1beta generateContent API
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImage(prompt, aspectRatio = '1:1') {
@@ -219,17 +221,14 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt }],
-          parameters: {
-            sampleCount: 1,
-            aspectRatio: aspectRatio,
-            safetySetting: 'block_only_high',
-            personGeneration: 'allow_adult',
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE', 'TEXT']
           }
         })
       }
@@ -239,21 +238,59 @@ async function generateImage(prompt, aspectRatio = '1:1') {
 
     if (!response.ok) {
       console.error('Image gen API error:', JSON.stringify(data));
-      return null;
+      // Fallback to Nano Banana (gemini-2.5-flash-image) if Pro fails
+      return await generateImageFallback(prompt);
     }
 
-    const base64 = data.predictions?.[0]?.bytesBase64Encoded;
-    const mimeType = data.predictions?.[0]?.mimeType || 'image/png';
-
-    if (!base64) {
-      console.error('Image gen: no base64 in response');
-      return null;
+    for (const part of data.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+      }
     }
 
-    return `data:${mimeType};base64,${base64}`;
+    console.error('Image gen: no inlineData in response');
+    return await generateImageFallback(prompt);
 
   } catch (error) {
     console.error('Image generation error:', error.message);
+    return null;
+  }
+}
+
+// Fallback to Nano Banana if Pro is unavailable
+async function generateImageFallback(prompt) {
+  try {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    console.log('Trying fallback model: gemini-2.5-flash-image');
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['IMAGE', 'TEXT']
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error('Fallback image gen error:', JSON.stringify(data));
+      return null;
+    }
+
+    for (const part of data.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error('Fallback image generation error:', error.message);
     return null;
   }
 }
@@ -436,13 +473,11 @@ app.post('/build-async', async (req, res) => {
   console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
 
-  // Force response to send immediately and close connection
-  // Prevents Base44 Deno function from timing out waiting for response
+  // Force response immediately — prevents Base44 Deno timeout
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Connection', 'close');
   res.end(JSON.stringify({ jobId }));
 
-  // Build runs entirely in background after response is sent
   (async () => {
     try {
       // ── PASS 1: Full site structure, design, content, logo ───────────────
@@ -453,7 +488,7 @@ app.post('/build-async', async (req, res) => {
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
 
       if (pass1Html.length < 5000) {
-        throw new Error(`Pass 1 output too short (${pass1Html.length} chars) — likely a model response issue`);
+        throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
       }
 
       // ── PASS 2: Interactivity + image slot tagging ───────────────────────
@@ -544,8 +579,7 @@ app.get('/health', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEST ENDPOINT — Confirm Imagen 3 works before running full build
-// Hit: https://axier-build-server-production.up.railway.app/test-image
+// TEST ENDPOINT — hit /test-image to confirm image generation works
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.get('/test-image', async (req, res) => {
