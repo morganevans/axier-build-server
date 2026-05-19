@@ -47,8 +47,8 @@ EVERY SITE MUST INCLUDE THESE SECTIONS:
 6. Featured work, portfolio, or results section
 7. Team or credentials section with portrait images
 8. Testimonials with star ratings
-9. FAQ accordion
-10. Contact/CTA section with form
+9. FAQ accordion with full answers
+10. Contact section with working form
 11. Footer with logo, links, and copyright
 
 IMAGE REQUIREMENTS (CRITICAL):
@@ -59,41 +59,51 @@ IMAGE REQUIREMENTS (CRITICAL):
 - The image AI replaces all placehold.co URLs with real branded photos
 
 NAVBAR REQUIREMENTS (CRITICAL):
-- Initial state: fully transparent background, white/light text
-- On scroll past 80px: background becomes solid dark color (e.g. rgba(15,14,12,0.97)) with backdrop-filter:blur(20px)
-- The solid background MUST have sufficient opacity to make nav links clearly readable against any page content behind it
-- Add a subtle bottom border on scroll state for definition
-- JavaScript scroll listener handles the transition with a CSS class toggle
+- Initial state: fully transparent background, white/light text, NO background color at all
+- The navbar CSS must start with: background: transparent !important; backdrop-filter: none;
+- On scroll past 80px JavaScript adds class "scrolled" to the navbar element
+- CSS for .navbar.scrolled: background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08);
+- NEVER set a background color on the navbar in its default state — it must be fully transparent
+- JavaScript scroll listener: window.addEventListener('scroll', () => { navbar.classList.toggle('scrolled', window.scrollY > 80); });
 
 FAQ REQUIREMENTS (CRITICAL):
-- Every FAQ item must have BOTH a question AND a full detailed answer
-- Answers must be 2-4 sentences of real, useful content — not placeholder text
-- The accordion open/close must work — clicking a question reveals its answer
-- Never leave FAQ answers empty or as placeholder text
+- Every FAQ item must have BOTH a question AND a full detailed answer written out
+- Answers must be 2-4 sentences of real useful content — never empty, never placeholder
+- Clicking a question reveals its answer with smooth animation
+- Only one answer open at a time
 
 FILTER/TAB REQUIREMENTS (CRITICAL):
-- All filter buttons and tabs must be fully functional
-- Clicking any filter button shows the relevant content and hides other content
-- The active state styling must update on click
-- ALL tabs must work, not just the first one
+- Every tab and filter button must work — ALL of them, not just the first
+- Each tab button must have a data-tab or data-filter attribute matching its content section
+- JavaScript: clicking a tab hides ALL content sections then shows only the matching one
+- Active class updates on every click
+- Content sections use matching data-tab or data-filter attributes
+
+CONTACT FORM REQUIREMENTS (CRITICAL):
+- Use action="CONTACT_FORM_ENDPOINT" method="POST" on the form
+- The CONTACT_FORM_ENDPOINT placeholder will be replaced by the build system with the real endpoint
+- Include fields: Full Name, Email, Phone (optional), Message, Submit button
+- Add: <input type="hidden" name="_subject" value="New Contact Form Submission">
+- Add: <input type="hidden" name="_captcha" value="false">
+- Style with dark inputs, accent color focus borders, full-width submit button
+- Show success message after submission
 
 CAROUSEL/SLIDER REQUIREMENTS (CRITICAL):
-- All prev/next buttons must work and cycle through all slides
+- All prev/next buttons cycle through ALL slides with wrap-around
 - Auto-advance every 5 seconds
-- Navigation dots update to show current slide
-- Works correctly with any number of slides
+- Navigation dots update and are clickable
 
 JAVASCRIPT REQUIREMENTS:
-- Navbar scroll behavior (transparent to solid with visible background)
+- Navbar: transparent by default, solid dark on scroll past 80px
 - Mobile hamburger menu
 - Smooth scroll to anchors
 - IntersectionObserver scroll reveals (JS-only, never CSS opacity:0 on content)
 - Animated number counters
 - Working FAQ accordion with full answers
-- All filter/tab bars fully functional
-- Working carousels/sliders with prev/next and dots
-- Form validation with success state
-- Custom branded cursor overlay following mouse
+- All filter/tab bars fully functional — every tab works
+- Working carousels with prev/next and dots
+- Contact form with validation and success state
+- Custom branded cursor overlay
 
 TECHNICAL REQUIREMENTS:
 - Single self-contained HTML file
@@ -137,6 +147,22 @@ function safeParseJson(text) {
   return JSON.parse(cleaned);
 }
 
+// Inject Formsubmit contact email — no signup, no account needed
+// First submission triggers a one-time activation email to the client
+// After activation all submissions go straight to their inbox forever
+function injectContactEmail(html, contactEmail) {
+  if (!contactEmail) return html;
+  const formsubmitUrl = `https://formsubmit.co/${contactEmail.trim()}`;
+  return html.replace(/CONTACT_FORM_ENDPOINT/g, formsubmitUrl);
+}
+
+// Extract contact email from userRequest if embedded as CONTACT_EMAIL: value
+function extractContactEmail(userRequest) {
+  if (!userRequest) return null;
+  const match = userRequest.match(/CONTACT_EMAIL:\s*([^\s\n]+)/i);
+  return match ? match[1].trim() : null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // IMAGE COMPRESSION
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +195,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
 // CLAUDE API CALLS
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
+async function callClaude(systemPrompt, userMessage, maxTokens = 24000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 600000);
   try {
@@ -258,8 +284,8 @@ function detectIndustry(text) {
 function getImageCap(industry) {
   const caps = {
     ecommerce: 16, fashion: 14, skincare: 12, restaurant: 12,
-    jewelry: 12, hospitality: 12, aesthetics_clinic: 10, wellness: 10,
-    fitness: 10, real_estate: 10, photography: 10, coffee: 8,
+    jewelry: 12, hospitality: 12, aesthetics_clinic: 12, wellness: 10,
+    fitness: 10, real_estate: 10, photography: 10, coffee: 10,
     music: 8, robotics: 8, portfolio: 8, business: 8, saas: 6, technology: 6,
   };
   return caps[industry] || 8;
@@ -408,7 +434,6 @@ function extractImageSlots(html) {
     }
   }
 
-  // Catch ALL CSS background-image URLs
   const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   let match;
   while ((match = bgPattern.exec(html)) !== null) {
@@ -536,13 +561,17 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/build-async', async (req, res) => {
-  const { userRequest } = req.body;
+  const { userRequest, contactEmail: directEmail } = req.body;
+
+  // Extract contact email — either passed directly or embedded in userRequest
+  const contactEmail = directEmail || extractContactEmail(userRequest);
 
   const jobId = Date.now().toString();
   jobs[jobId] = { status: 'pending', phase: 'starting', html: null, error: null };
 
   console.log(`Job ${jobId} started`);
   console.log(`userRequest length: ${userRequest?.length}`);
+  console.log(`contactEmail: ${contactEmail || 'not provided'}`);
   console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
   console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
 
@@ -556,7 +585,7 @@ app.post('/build-async', async (req, res) => {
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
 
-      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
+      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 24000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
 
       if (pass1Html.length < 5000) {
@@ -572,94 +601,88 @@ Upgrade this HTML file with two goals:
 
 GOAL 1 — COMPLETE INTERACTIVITY (every item below is mandatory):
 
-NAVBAR:
-- On scroll past 80px add a class "scrolled" to the navbar
-- When "scrolled": background becomes solid dark (rgba(15,14,12,0.97)), backdrop-filter:blur(20px), visible bottom border
-- This MUST make nav links clearly readable against any background
-- Mobile hamburger menu that opens/closes a full nav overlay
+NAVBAR (CRITICAL):
+- Remove ANY background color from the navbar default CSS state
+- navbar default: background: transparent !important; backdrop-filter: none !important;
+- Add JS: window.addEventListener('scroll', () => { const nav = document.querySelector('nav, header, .navbar, #navbar, [class*="nav"]'); if(nav) nav.classList.toggle('scrolled', window.scrollY > 80); });
+- Add CSS: nav.scrolled, header.scrolled, .navbar.scrolled, [class*="nav"].scrolled { background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
+- Mobile hamburger menu
 
-HERO:
-- Parallax effect on the hero image — moves at 0.4x scroll speed
-- Entrance animations on headline and CTAs
+CUSTOM CURSOR:
+- 20px circle in accent color, fixed, pointer-events:none, z-index:9999
+- Smooth lerp mouse follow
+- Scales to 40px on hover over links/buttons
+- NEVER cursor:none
 
-CUSTOM CURSOR (CRITICAL):
-- Create a branded cursor overlay element — a 20px circle in the site's primary accent color
-- Position it fixed, pointer-events:none, z-index:9999, border-radius:50%
-- Use JS mousemove to follow the cursor with a smooth lerp/lag effect (8-12px behind actual cursor)
-- On hover over links/buttons: scale the cursor up to 40px and change opacity
-- NEVER set cursor:none on body or any element — the default cursor stays visible
-- The overlay is purely additive personality on top of the native cursor
-
-CAROUSELS & SLIDERS (CRITICAL — ALL must work):
-- Find every carousel, slider, or testimonial section
-- prev/next buttons cycle through ALL slides — not just first to second
-- Auto-advance every 5 seconds
-- Navigation dots highlight current slide and clicking them navigates to that slide
-- Wrap around at the end back to the beginning
-
-FILTER TABS (CRITICAL — ALL must work):
-- Find every tab bar, filter bar, or category selector
-- Clicking ANY tab shows its content and hides other content
-- Active state styling updates on every click
-- ALL tabs must work, not just the first one
-- Use data-filter or data-tab attributes to match buttons to content
+FILTER TABS (CRITICAL — implement exactly this):
+- Add data-tab="name" to every tab button
+- Add data-tab-content="name" to every matching content section
+- JavaScript:
+  function initTabs() {
+    const tabs = document.querySelectorAll('[data-tab]');
+    const contents = document.querySelectorAll('[data-tab-content]');
+    if (!tabs.length) return;
+    tabs.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabs.forEach(b => b.classList.remove('active'));
+        contents.forEach(c => { c.style.display = 'none'; c.style.opacity = '0'; });
+        btn.classList.add('active');
+        const content = document.querySelector('[data-tab-content="' + btn.dataset.tab + '"]');
+        if (content) { content.style.display = 'block'; setTimeout(() => content.style.opacity = '1', 10); }
+      });
+    });
+    tabs[0].click();
+  }
+  initTabs();
 
 FAQ ACCORDION (CRITICAL):
-- Every FAQ item must have a visible question AND a complete answer
-- If any answer is missing or empty, add appropriate answer content
-- Clicking a question toggles its answer open/closed with smooth animation
-- Only one answer open at a time (close others when one opens)
+- Every FAQ must have a complete written answer — write content if missing
+- One open at a time with smooth animation
 
-COUNTERS:
-- Animated number counters that count up when scrolled into view
-- Use IntersectionObserver — not scroll events
+CAROUSELS:
+- All prev/next buttons wrap around through all slides
+- Auto-advance every 5 seconds
+- Dots are clickable and update
 
-FORMS:
-- Validate all required fields on submit
-- Show success message on valid submission
-- Show error states on invalid fields
+COUNTERS: Count up on scroll using IntersectionObserver
 
-SCROLL REVEALS (CRITICAL):
-- NEVER set opacity:0 or visibility:hidden in CSS on content elements
-- Add "js-ready" class to body on DOMContentLoaded
-- Only when "js-ready" exists: CSS sets .reveal opacity:0 and translateY(30px)
-- IntersectionObserver adds "revealed" class to trigger transition to opacity:1
-- This ensures all content visible even if JS loads slowly
+FORMS: Validate required fields, show success message
+
+SCROLL REVEALS:
+- NEVER opacity:0 in CSS on content elements
+- JS adds "js-ready" to body → CSS targets .js-ready .reveal → IntersectionObserver adds "revealed"
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
-Add a data-slot attribute to EVERY <img> tag with a descriptive name of exactly what image belongs there.
-This name drives the AI image generator — be specific and descriptive.
+Add data-slot to EVERY <img> tag — unique specific description of what image belongs there.
+Good: data-slot="hero-background-dark-moody-coffee-shop-interior-warm-lighting"
+Bad: data-slot="image-1" or data-slot="photo"
 
-Good examples:
-  data-slot="hero-background-luxury-medspa-interior-candlelit-golden-warmth"
-  data-slot="product-card-vitamin-c-brightening-serum-amber-glass-bottle"
-  data-slot="team-member-dr-sarah-chen-female-physician-professional-studio-portrait"
-  data-slot="before-after-skin-rejuvenation-hydration-treatment-result"
-  data-slot="lifestyle-woman-morning-luxury-skincare-bathroom-routine-soft-light"
-  data-slot="about-section-clinic-interior-modern-treatment-room-warm-tones"
-
-Bad examples — never use:
-  data-slot="image-1" or data-slot="photo" or data-slot="img" or data-slot="picture"
-
-Every single <img> tag gets a unique descriptive data-slot. No exceptions.
-
-Do NOT change any design decisions, colors, fonts, layout, or visual style from Pass 1.
-Return the COMPLETE updated HTML file — every line, nothing truncated.
+Do NOT change design, colors, fonts, or layout from Pass 1.
+Return the COMPLETE updated HTML — every line, nothing truncated.
 
 HTML:
 ${pass1Html}`;
 
       const pass2Html = await callClaude(
-        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Never truncate or abbreviate — return every line.',
+        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Never truncate — return every line.',
         pass2Prompt,
-        32000
+        24000
       );
 
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
+      // Inject Formsubmit contact email — works with no signup required
+      const htmlWithForm = contactEmail
+        ? injectContactEmail(pass2Html, contactEmail)
+        : pass2Html;
+
+      if (contactEmail) {
+        console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
+      }
+
       // ── PASS 3: Branded image generation & injection ─────────────────────
       jobs[jobId].phase = 'pass3';
-      const finalHtml = await injectBrandedImages(pass2Html, userRequest, jobId);
+      const finalHtml = await injectBrandedImages(htmlWithForm, userRequest, jobId);
 
       jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
 
