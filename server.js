@@ -9,10 +9,6 @@ app.use(express.json({ limit: '10mb' }));
 
 const jobs = {};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MASTER DESIGN SYSTEM PROMPT
-// ─────────────────────────────────────────────────────────────────────────────
-
 const MASTER_SYSTEM_PROMPT = `You are the world's best UI/UX designer and frontend developer combined.
 You build stunning, award-winning websites that look like they cost $10,000–$50,000 to produce.
 Every site you build is a complete, multi-section, fully responsive HTML file.
@@ -77,16 +73,14 @@ FILTER/TAB REQUIREMENTS (CRITICAL):
 - Each tab button must have a data-tab or data-filter attribute matching its content section
 - JavaScript: clicking a tab hides ALL content sections then shows only the matching one
 - Active class updates on every click
-- Content sections use matching data-tab or data-filter attributes
 
 CONTACT FORM REQUIREMENTS (CRITICAL):
 - Use action="CONTACT_FORM_ENDPOINT" method="POST" on the form
-- The CONTACT_FORM_ENDPOINT placeholder will be replaced by the build system with the real endpoint
+- The CONTACT_FORM_ENDPOINT placeholder will be replaced by the build system
 - Include fields: Full Name, Email, Phone (optional), Message, Submit button
 - Add: <input type="hidden" name="_subject" value="New Contact Form Submission">
 - Add: <input type="hidden" name="_captcha" value="false">
 - Style with dark inputs, accent color focus borders, full-width submit button
-- Show success message after submission
 
 CAROUSEL/SLIDER REQUIREMENTS (CRITICAL):
 - All prev/next buttons cycle through ALL slides with wrap-around
@@ -100,7 +94,7 @@ JAVASCRIPT REQUIREMENTS:
 - IntersectionObserver scroll reveals (JS-only, never CSS opacity:0 on content)
 - Animated number counters
 - Working FAQ accordion with full answers
-- All filter/tab bars fully functional — every tab works
+- All filter/tab bars fully functional
 - Working carousels with prev/next and dots
 - Contact form with validation and success state
 - Custom branded cursor overlay
@@ -122,10 +116,6 @@ ABSOLUTE OUTPUT RULES — ZERO TOLERANCE:
 - No explanations, no preamble, no commentary
 - Raw HTML only`;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILITIES
-// ─────────────────────────────────────────────────────────────────────────────
-
 function cleanHtml(html) {
   html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
   const doctypeIndex = html.indexOf('<!DOCTYPE');
@@ -138,52 +128,33 @@ function cleanHtml(html) {
 }
 
 function safeParseJson(text) {
-  const cleaned = text
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
+  const cleaned = text.trim()
+    .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
   return JSON.parse(cleaned);
 }
 
-// Inject Formsubmit contact email — no signup, no account needed
-// First submission triggers a one-time activation email to the client
-// After activation all submissions go straight to their inbox forever
 function injectContactEmail(html, contactEmail) {
   if (!contactEmail) return html;
-  const formsubmitUrl = `https://formsubmit.co/${contactEmail.trim()}`;
-  return html.replace(/CONTACT_FORM_ENDPOINT/g, formsubmitUrl);
+  return html.replace(/CONTACT_FORM_ENDPOINT/g, `https://formsubmit.co/${contactEmail.trim()}`);
 }
 
-// Extract contact email from userRequest if embedded as CONTACT_EMAIL: value
 function extractContactEmail(userRequest) {
   if (!userRequest) return null;
   const match = userRequest.match(/CONTACT_EMAIL:\s*([^\s\n]+)/i);
   return match ? match[1].trim() : null;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IMAGE COMPRESSION
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   try {
     const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) return base64DataUrl;
-
-    const base64Data = matches[2];
-    const inputBuffer = Buffer.from(base64Data, 'base64');
-
+    const inputBuffer = Buffer.from(matches[2], 'base64');
     const outputBuffer = await sharp(inputBuffer)
       .resize(targetWidthPx, null, { withoutEnlargement: true, fit: 'inside' })
-      .jpeg({ quality: 82, progressive: true })
-      .toBuffer();
-
+      .jpeg({ quality: 82, progressive: true }).toBuffer();
     const originalKb = Math.round(inputBuffer.length / 1024);
     const compressedKb = Math.round(outputBuffer.length / 1024);
     console.log(`Image compressed: ${originalKb}kb → ${compressedKb}kb`);
-
     return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
   } catch (error) {
     console.error('Image compression error:', error.message);
@@ -191,11 +162,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CLAUDE API CALLS
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function callClaude(systemPrompt, userMessage, maxTokens = 24000) {
+async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 600000);
   try {
@@ -255,10 +222,6 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INDUSTRY DETECTION + DYNAMIC IMAGE CAP
-// ─────────────────────────────────────────────────────────────────────────────
-
 function detectIndustry(text) {
   text = text.toLowerCase();
   if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
@@ -274,6 +237,7 @@ function detectIndustry(text) {
   if (text.includes('tech') || text.includes('software') || text.includes('saas')) return 'technology';
   if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
   if (text.includes('photography') || text.includes('photographer')) return 'photography';
+  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrician') || text.includes('contractor') || text.includes('trades')) return 'trades';
   if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('injectable') || text.includes('med spa') || text.includes('medspa')) return 'aesthetics_clinic';
   if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
   if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
@@ -286,14 +250,11 @@ function getImageCap(industry) {
     ecommerce: 16, fashion: 14, skincare: 12, restaurant: 12,
     jewelry: 12, hospitality: 12, aesthetics_clinic: 12, wellness: 10,
     fitness: 10, real_estate: 10, photography: 10, coffee: 10,
-    music: 8, robotics: 8, portfolio: 8, business: 8, saas: 6, technology: 6,
+    trades: 10, music: 8, robotics: 8, portfolio: 8, business: 8,
+    saas: 6, technology: 6,
   };
   return caps[industry] || 8;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — with retry
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -317,7 +278,6 @@ async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) { console.error('GOOGLE_API_KEY not set'); return null; }
-
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
       {
@@ -329,23 +289,19 @@ async function generateImage(prompt, aspectRatio = '1:1') {
         })
       }
     );
-
     const data = await response.json();
     if (!response.ok) {
       console.error('Image gen API error:', JSON.stringify(data));
       return await generateImageFallback(prompt);
     }
-
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
         return await compressBase64Image(raw, 1200);
       }
     }
-
     console.error('Image gen: no inlineData in response');
     return await generateImageFallback(prompt);
-
   } catch (error) {
     console.error('Image generation error:', error.message);
     return null;
@@ -356,7 +312,6 @@ async function generateImageFallback(prompt) {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
     console.log('Trying fallback: gemini-2.5-flash-preview');
-
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
       {
@@ -368,10 +323,8 @@ async function generateImageFallback(prompt) {
         })
       }
     );
-
     const data = await response.json();
     if (!response.ok) { console.error('Fallback error:', JSON.stringify(data)); return null; }
-
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
         const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
@@ -385,10 +338,6 @@ async function generateImageFallback(prompt) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SLOT EXTRACTION — Full HTML scan
-// ─────────────────────────────────────────────────────────────────────────────
-
 function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
@@ -397,7 +346,6 @@ function extractImageSlots(html) {
     /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
     /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
   ];
-
   for (let pi = 0; pi < patterns.length; pi++) {
     let match;
     while ((match = patterns[pi].exec(html)) !== null) {
@@ -421,7 +369,6 @@ function extractImageSlots(html) {
     /src="(https?:\/\/dummyimage[^"]*)"/gi,
     /src="(placeholder[^"]*\.(?:jpg|jpeg|png|webp|gif))"/gi,
   ];
-
   for (const pattern of placeholderPatterns) {
     pattern.lastIndex = 0;
     let match;
@@ -443,57 +390,38 @@ function extractImageSlots(html) {
       const contextStart = Math.max(0, match.index - 200);
       const context = html.substring(contextStart, match.index).toLowerCase();
       const isHero = context.includes('hero') || context.includes('banner') || context.includes('section-hero');
-      slots.push({
-        id: isHero ? `hero-background-fullscreen` : `bg-${slots.length}`,
-        src,
-        type: 'background'
-      });
+      slots.push({ id: isHero ? `hero-background-fullscreen` : `bg-${slots.length}`, src, type: 'background' });
     }
   }
-
   return slots;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PASS 3 — CONTEXT-AWARE BRANDED IMAGE INJECTION
-// ─────────────────────────────────────────────────────────────────────────────
-
 async function injectBrandedImages(html, userRequest, jobId) {
   console.log(`Job ${jobId} — Pass 3 starting (context-aware image generation)`);
-
   const industry = detectIndustry(userRequest);
   const imageCap = getImageCap(industry);
   console.log(`Job ${jobId} — Industry: ${industry} | Cap: ${imageCap} images`);
 
   const rawSlots = extractImageSlots(html);
   console.log(`Job ${jobId} — Found ${rawSlots.length} slots in full HTML`);
-
-  if (rawSlots.length === 0) {
-    console.log(`Job ${jobId} — No image slots found, skipping`);
-    return html;
-  }
+  if (rawSlots.length === 0) { console.log(`Job ${jobId} — No image slots found, skipping`); return html; }
 
   const slotsToProcess = rawSlots.slice(0, imageCap);
   console.log(`Job ${jobId} — Processing ${slotsToProcess.length} slots`);
 
   const promptGenRequest = `You are a world-class brand photographer and creative director.
-
 Brand context: ${userRequest.substring(0, 800)}
 Industry: ${industry}
-
 For each image slot below, write a highly specific photorealistic image generation prompt.
 Requirements:
 - Match the brand's exact aesthetic, color palette, and mood
 - Be completely specific to what that slot shows
 - Make each prompt unique
 - Always end with ", no text, no watermarks, no logos, professional photography"
-
 Slots:
 ${slotsToProcess.map((s, i) => `${i}. "${s.id}"`).join('\n')}
-
 Return ONLY a JSON array starting with [ immediately:
 [{"index":0,"prompt":"...","aspect_ratio":"16:9"},...]
-
 aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:3" for lifestyle`;
 
   let promptData = [];
@@ -510,7 +438,6 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
   }
 
   console.log(`Job ${jobId} — Generating ${slotsToProcess.length} images in parallel`);
-
   const imageResults = await Promise.all(
     slotsToProcess.map(async (slot, i) => {
       const promptEntry = promptData[i] || promptData.find(p => p.index === i);
@@ -531,14 +458,8 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
     try {
       if (result.type === 'data-slot') {
         const eid = result.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(
-          new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'g'),
-          `$1${result.generatedImage}$2`
-        );
-        html = html.replace(
-          new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'g'),
-          `$1${result.generatedImage}$2`
-        );
+        html = html.replace(new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'g'), `$1${result.generatedImage}$2`);
+        html = html.replace(new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'g'), `$1${result.generatedImage}$2`);
       } else if (result.type === 'background') {
         const esc = result.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         html = html.replace(new RegExp(esc, 'g'), result.generatedImage);
@@ -556,14 +477,8 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
   return html;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// BUILD PIPELINE
-// ─────────────────────────────────────────────────────────────────────────────
-
 app.post('/build-async', async (req, res) => {
   const { userRequest, contactEmail: directEmail } = req.body;
-
-  // Extract contact email — either passed directly or embedded in userRequest
   const contactEmail = directEmail || extractContactEmail(userRequest);
 
   const jobId = Date.now().toString();
@@ -581,18 +496,14 @@ app.post('/build-async', async (req, res) => {
 
   (async () => {
     try {
-      // ── PASS 1: Full site structure, design, content, logo ───────────────
+      // ── PASS 1: Full site — 32000 tokens to ensure complete output ───────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
-
-      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 24000);
+      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
+      if (pass1Html.length < 5000) throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
 
-      if (pass1Html.length < 5000) {
-        throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
-      }
-
-      // ── PASS 2: Interactivity + image slot tagging ───────────────────────
+      // ── PASS 2: Interactivity + image slot tagging — 24000 tokens ────────
       jobs[jobId].phase = 'pass2';
       console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
@@ -639,18 +550,10 @@ FAQ ACCORDION (CRITICAL):
 - Every FAQ must have a complete written answer — write content if missing
 - One open at a time with smooth animation
 
-CAROUSELS:
-- All prev/next buttons wrap around through all slides
-- Auto-advance every 5 seconds
-- Dots are clickable and update
-
+CAROUSELS: All prev/next wrap around, auto-advance 5s, dots clickable
 COUNTERS: Count up on scroll using IntersectionObserver
-
 FORMS: Validate required fields, show success message
-
-SCROLL REVEALS:
-- NEVER opacity:0 in CSS on content elements
-- JS adds "js-ready" to body → CSS targets .js-ready .reveal → IntersectionObserver adds "revealed"
+SCROLL REVEALS: NEVER opacity:0 in CSS — JS adds "js-ready" to body, IntersectionObserver adds "revealed"
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add data-slot to EVERY <img> tag — unique specific description of what image belongs there.
@@ -668,22 +571,14 @@ ${pass1Html}`;
         pass2Prompt,
         24000
       );
-
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
-      // Inject Formsubmit contact email — works with no signup required
-      const htmlWithForm = contactEmail
-        ? injectContactEmail(pass2Html, contactEmail)
-        : pass2Html;
+      const htmlWithForm = contactEmail ? injectContactEmail(pass2Html, contactEmail) : pass2Html;
+      if (contactEmail) console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
 
-      if (contactEmail) {
-        console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
-      }
-
-      // ── PASS 3: Branded image generation & injection ─────────────────────
+      // ── PASS 3: Images ────────────────────────────────────────────────────
       jobs[jobId].phase = 'pass3';
       const finalHtml = await injectBrandedImages(htmlWithForm, userRequest, jobId);
-
       jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
 
     } catch (error) {
@@ -716,9 +611,7 @@ app.get('/health', (req, res) => {
 app.get('/test-image', async (req, res) => {
   console.log('Test image endpoint hit');
   const result = await generateImageWithRetry(
-    'A premium luxury skincare serum bottle on white marble, cinematic lighting, no text, professional photography',
-    '1:1',
-    2
+    'A premium luxury skincare serum bottle on white marble, cinematic lighting, no text, professional photography', '1:1', 2
   );
   if (result) {
     const sizeKb = Math.round(result.length / 1024);
@@ -729,6 +622,4 @@ app.get('/test-image', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`Axier build server running on port ${PORT}`);
-});
+app.listen(PORT, () => { console.log(`Axier build server running on port ${PORT}`); });
