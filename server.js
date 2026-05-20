@@ -9,6 +9,10 @@ app.use(express.json({ limit: '10mb' }));
 
 const jobs = {};
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MASTER DESIGN SYSTEM PROMPT
+// ─────────────────────────────────────────────────────────────────────────────
+
 const MASTER_SYSTEM_PROMPT = `You are the world's best UI/UX designer and frontend developer combined.
 You build stunning, award-winning websites that look like they cost $10,000–$50,000 to produce.
 Every site you build is a complete, multi-section, fully responsive HTML file.
@@ -22,99 +26,92 @@ DESIGN PHILOSOPHY:
 - Dark, rich backgrounds with strategic use of light — cinematic quality
 - Micro-animations and scroll reveals on every section
 - Mobile-first responsive design
-- CURSOR RULE: Always design a custom cursor experience suited to the brand aesthetic. Use a small branded cursor overlay (16-24px circle or dot in the brand's accent color) that follows the mouse using JavaScript mousemove. The overlay must use pointer-events:none so it never blocks clicks. NEVER use cursor:none — keep the default cursor visible at all times so the user can always click accurately. The custom overlay adds personality on top of the native cursor.
-- SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden on content in CSS. Scroll reveal animations must be added by JavaScript AFTER the page loads — JS adds a class like "reveal-ready" to the body first, then applies opacity:0 to elements, then triggers the reveal. This ensures all content is visible even if JS loads slowly.
+- CURSOR RULE: Always design a custom branded cursor overlay — a 20px circle in the site's primary accent color, fixed position, pointer-events:none, z-index:9999. Use JS mousemove with smooth lerp to follow the cursor. Scale to 40px on hover over links/buttons. NEVER cursor:none — default cursor always visible underneath.
+- SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden in CSS on content. JS adds "js-ready" class to body on DOMContentLoaded, then CSS targets .js-ready .reveal with opacity:0 and translateY(30px), then IntersectionObserver adds "revealed" class.
 
-LOGO REQUIREMENTS (CRITICAL — DO THIS EVERY TIME):
-- Design a unique SVG logo for the brand based on their industry and brief
-- The logo must have an icon/mark AND the brand name in a matching typeface
-- Use industry-appropriate colors — NOT generic white text
-- Define it as: <symbol id="brand-logo" viewBox="0 0 280 70">...</symbol>
-- Use it via <use href="#brand-logo"/> in the navbar AND footer
-- The logo must be professional enough to use on a real business card
-- ICON DESIGN RULES: The icon must be clean, geometric, and instantly recognizable. Use simple precise shapes — circles, arcs, lines, minimal geometric forms built from clean SVG paths. NO abstract blobs, NO poorly formed organic shapes, NO complex paths that look broken or accidental. Think Nike swoosh simplicity — one clean idea executed perfectly. Examples by industry: wellness/spa → a perfect minimal lotus (3 clean petals as simple ellipses) or a clean circle with an inner line; tech → a precise geometric mark using rectangles or clean angles; food/restaurant → a simple elegant fork or leaf; medical/clinic → a clean cross or minimal circle; jewelry → a simple diamond shape or ring. The icon must look intentional, refined, and professional at any size. Test: would a real design agency be proud to show this to a client?
+LOGO REQUIREMENTS (CRITICAL):
+- The logo SVG will be provided to you as a <symbol id="brand-logo"> block — USE IT EXACTLY AS PROVIDED
+- Place it in the navbar with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
+- Place it in the footer with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
+- Size it appropriately with CSS: .logo-svg { width: 180px; height: 45px; }
+- DO NOT redesign or modify the provided logo
 
-EVERY SITE MUST INCLUDE THESE SECTIONS:
-1. Fixed navbar (transparent → solid on scroll) with SVG logo and nav links
-2. Full-screen hero (100vh) with headline, subheading, and CTAs
+EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
+1. Fixed navbar (transparent → solid on scroll) with provided SVG logo and nav links
+2. Full-screen hero (100vh) with headline, subheading, CTAs, and hero background image
 3. Stats/social proof bar with animated counters
-4. Services or Products section with cards (3–6 items)
+4. Services or Products section with cards (minimum 6 items) with icons and full descriptions
 5. About/Story section with text and image side by side
-6. Featured work, portfolio, or results section
-7. Team or credentials section with portrait images
-8. Testimonials with star ratings
-9. FAQ accordion with full answers
-10. Contact section with working form
-11. Footer with logo, links, and copyright
+6. Featured work, portfolio, or process/steps section
+7. Team or credentials section with portrait images and bios
+8. Testimonials carousel with star ratings (minimum 3 testimonials)
+9. FAQ accordion — minimum 6 questions each with 2-4 sentence answers — NEVER leave answers empty
+10. Contact section with form using action="CONTACT_FORM_ENDPOINT" method="POST"
+11. Footer with logo, links, social icons, and copyright
 
 IMAGE REQUIREMENTS (CRITICAL):
 - For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
-- Size placeholders correctly: hero: 1920x1080, products: 600x600, portraits: 400x400, cards: 800x600
-- HERO SECTION: ALWAYS use an <img> tag with src="https://placehold.co/1920x1080" as the hero background image — do NOT use CSS background-image for the hero. Place the <img> absolutely positioned behind the content with position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Put a dark overlay div above it (z-index:1) and content above that (z-index:2).
-- DO NOT use Unsplash URLs, CSS background-image with real URLs, or any external image URLs anywhere
-- The image AI replaces all placehold.co URLs with real branded photos
+- hero: 1920x1080, team portraits: 400x400, service cards: 600x400, about: 800x600
+- HERO: <img> tag absolutely positioned, position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Dark overlay div z-index:1. Content z-index:2.
+- NO CSS background-image with real URLs anywhere
+- NO Unsplash or external image URLs
 
-NAVBAR REQUIREMENTS (CRITICAL):
-- Initial state: fully transparent background, white/light text, NO background color at all
-- The navbar CSS must start with: background: transparent !important; backdrop-filter: none;
-- On scroll past 80px JavaScript adds class "scrolled" to the navbar element
-- CSS for .navbar.scrolled: background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.08);
-- NEVER set a background color on the navbar in its default state — it must be fully transparent
-- JavaScript scroll listener: window.addEventListener('scroll', () => { navbar.classList.toggle('scrolled', window.scrollY > 80); });
+NAVBAR (CRITICAL):
+- Default state: background: transparent !important; backdrop-filter: none !important;
+- NEVER add any background color to the navbar default state
+- JS: window.addEventListener('scroll', () => { const nav = document.querySelector('nav, .navbar, header'); if(nav) nav.classList.toggle('scrolled', window.scrollY > 80); });
+- CSS: nav.scrolled, .navbar.scrolled, header.scrolled { background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
 
-FAQ REQUIREMENTS (CRITICAL):
-- Every FAQ item must have BOTH a question AND a full detailed answer written out
-- Answers must be 2-4 sentences of real useful content — never empty, never placeholder
-- Clicking a question reveals its answer with smooth animation
-- Only one answer open at a time
+FAQ (CRITICAL):
+- Minimum 6 FAQ items
+- Every single FAQ item MUST have a complete written answer of 2-4 sentences
+- NEVER leave an answer empty or as placeholder text
+- Clicking opens/closes with smooth animation — one open at a time
 
-FILTER/TAB REQUIREMENTS (CRITICAL):
-- Every tab and filter button must work — ALL of them, not just the first
-- Each tab button must have a data-tab or data-filter attribute matching its content section
-- JavaScript: clicking a tab hides ALL content sections then shows only the matching one
-- Active class updates on every click
+CONTACT FORM (CRITICAL):
+- form action="CONTACT_FORM_ENDPOINT" method="POST"
+- Include: Full Name, Email, Phone (optional), Message textarea, Submit button
+- Hidden fields: <input type="hidden" name="_subject" value="New Enquiry">
+- Hidden fields: <input type="hidden" name="_captcha" value="false">
+- Dark styled inputs with accent color focus glow
+- Success message shown after submit
 
-CONTACT FORM REQUIREMENTS (CRITICAL):
-- Use action="CONTACT_FORM_ENDPOINT" method="POST" on the form
-- The CONTACT_FORM_ENDPOINT placeholder will be replaced by the build system
-- Include fields: Full Name, Email, Phone (optional), Message, Submit button
-- Add: <input type="hidden" name="_subject" value="New Contact Form Submission">
-- Add: <input type="hidden" name="_captcha" value="false">
-- Style with dark inputs, accent color focus borders, full-width submit button
+FILTER TABS:
+- data-tab="name" on buttons, data-tab-content="name" on content sections
+- All tabs functional — clicking any tab shows its content
 
-CAROUSEL/SLIDER REQUIREMENTS (CRITICAL):
-- All prev/next buttons cycle through ALL slides with wrap-around
-- Auto-advance every 5 seconds
-- Navigation dots update and are clickable
+CAROUSELS:
+- prev/next wrap around, auto-advance 5s, dots clickable
 
 JAVASCRIPT REQUIREMENTS:
-- Navbar: transparent by default, solid dark on scroll past 80px
+- Navbar scroll transparency → solid
+- Custom branded cursor with lerp
+- All tabs/filters working
+- FAQ accordion
+- Animated counters on scroll
+- Carousel/slider
+- Form validation + success state
+- Smooth anchor scroll
 - Mobile hamburger menu
-- Smooth scroll to anchors
-- IntersectionObserver scroll reveals (JS-only, never CSS opacity:0 on content)
-- Animated number counters
-- Working FAQ accordion with full answers
-- All filter/tab bars fully functional
-- Working carousels with prev/next and dots
-- Contact form with validation and success state
-- Custom branded cursor overlay
+- Scroll reveal with js-ready pattern
 
-TECHNICAL REQUIREMENTS:
-- Single self-contained HTML file
-- All CSS in <style> tags
-- All JS in <script> tags
+TECHNICAL:
+- Single HTML file, CSS in <style>, JS in <script>
 - Google Fonts via @import
-- Minimum 1000 lines of code
-- Pixel-perfect on mobile and desktop`;
+- Minimum 1200 lines
+- Pixel perfect mobile and desktop`;
 
 const HTML_OUTPUT_RULES = `
 
-ABSOLUTE OUTPUT RULES — ZERO TOLERANCE:
-- Start your response with <!DOCTYPE html> — nothing before it, not even a space
+ABSOLUTE OUTPUT RULES:
+- Start with <!DOCTYPE html> — nothing before it
 - End with </html> — nothing after it
-- No markdown code fences (no \`\`\`html)
-- No explanations, no preamble, no commentary
+- No markdown fences, no explanation, no commentary
 - Raw HTML only`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
 
 function cleanHtml(html) {
   html = html.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
@@ -144,6 +141,10 @@ function extractContactEmail(userRequest) {
   return match ? match[1].trim() : null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE COMPRESSION
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   try {
     const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -161,6 +162,103 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
     return base64DataUrl;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO GENERATION — Gemini generates a professional SVG logo
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function generateLogoWithGemini(brandName, industry, colorPalette, userRequest) {
+  try {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) { console.log('No Google API key — skipping logo generation'); return null; }
+
+    const logoPrompt = `You are a world-class SVG logo designer. Create a professional SVG logo for this brand.
+
+Brand: ${brandName}
+Industry: ${industry}
+Colors: ${colorPalette}
+Brief: ${userRequest.substring(0, 400)}
+
+Design rules:
+- Clean, geometric icon mark — simple shapes only (circles, lines, arcs, polygons)
+- NO abstract blobs, NO complex organic paths, NO broken shapes
+- Icon + wordmark side by side
+- Professional enough for a business card
+- The icon must be instantly recognizable and relevant to the industry
+- Use the provided brand colors
+
+Output ONLY a valid SVG <symbol> element in this exact format:
+<symbol id="brand-logo" viewBox="0 0 280 60">
+  <!-- icon mark on the left -->
+  <!-- wordmark text on the right -->
+</symbol>
+
+No explanation. No markdown. Just the <symbol> element starting with <symbol and ending with </symbol>.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: logoPrompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (!response.ok) { console.error('Logo gen error:', JSON.stringify(data)); return null; }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) { console.log('Logo gen: no text returned'); return null; }
+
+    // Extract the symbol element
+    const symbolMatch = text.match(/<symbol[\s\S]*?<\/symbol>/i);
+    if (!symbolMatch) { console.log('Logo gen: no symbol element found in response'); return null; }
+
+    console.log('Logo generated successfully via Gemini');
+    return symbolMatch[0];
+
+  } catch (error) {
+    console.error('Logo generation error:', error.message);
+    return null;
+  }
+}
+
+// Extract brand name and colors from userRequest
+function extractBrandInfo(userRequest) {
+  const text = userRequest.toLowerCase();
+
+  // Try to find brand name — look for quoted names or "called X" or "named X"
+  let brandName = 'Brand';
+  const nameMatch = userRequest.match(/(?:called|named|for)\s+([A-Z][A-Za-z\s&]+?)(?:\s*[—\-,.]|\s+is\s|\s+we\s|\s+a\s)/);
+  if (nameMatch) brandName = nameMatch[1].trim();
+
+  // Detect industry
+  let industry = 'business';
+  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrical') || text.includes('trades')) industry = 'trades';
+  else if (text.includes('coffee') || text.includes('cafe')) industry = 'coffee';
+  else if (text.includes('spa') || text.includes('wellness') || text.includes('med spa')) industry = 'wellness';
+  else if (text.includes('restaurant') || text.includes('dining')) industry = 'restaurant';
+  else if (text.includes('fitness') || text.includes('gym')) industry = 'fitness';
+  else if (text.includes('real estate') || text.includes('property')) industry = 'real_estate';
+  else if (text.includes('tech') || text.includes('software') || text.includes('saas')) industry = 'technology';
+  else if (text.includes('medical') || text.includes('clinic') || text.includes('aesthetic')) industry = 'medical';
+  else if (text.includes('jewelry') || text.includes('jewellery')) industry = 'jewelry';
+  else if (text.includes('fashion') || text.includes('clothing')) industry = 'fashion';
+
+  // Extract color mentions
+  const colorKeywords = ['navy', 'orange', 'gold', 'teal', 'green', 'blue', 'red', 'black', 'white', 'grey', 'purple', 'amber'];
+  const foundColors = colorKeywords.filter(c => text.includes(c));
+  const colorPalette = foundColors.length > 0 ? foundColors.join(', ') : 'professional, industry-appropriate colors';
+
+  return { brandName, industry, colorPalette };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLAUDE API CALLS
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
   const controller = new AbortController();
@@ -222,6 +320,10 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INDUSTRY DETECTION + IMAGE CAP
+// ─────────────────────────────────────────────────────────────────────────────
+
 function detectIndustry(text) {
   text = text.toLowerCase();
   if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
@@ -255,6 +357,10 @@ function getImageCap(industry) {
   };
   return caps[industry] || 8;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGE GENERATION
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -338,6 +444,10 @@ async function generateImageFallback(prompt) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SLOT EXTRACTION
+// ─────────────────────────────────────────────────────────────────────────────
+
 function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
@@ -396,15 +506,19 @@ function extractImageSlots(html) {
   return slots;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PASS 3 — IMAGE INJECTION
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function injectBrandedImages(html, userRequest, jobId) {
-  console.log(`Job ${jobId} — Pass 3 starting (context-aware image generation)`);
+  console.log(`Job ${jobId} — Pass 3 starting (image generation)`);
   const industry = detectIndustry(userRequest);
   const imageCap = getImageCap(industry);
   console.log(`Job ${jobId} — Industry: ${industry} | Cap: ${imageCap} images`);
 
   const rawSlots = extractImageSlots(html);
   console.log(`Job ${jobId} — Found ${rawSlots.length} slots in full HTML`);
-  if (rawSlots.length === 0) { console.log(`Job ${jobId} — No image slots found, skipping`); return html; }
+  if (rawSlots.length === 0) { console.log(`Job ${jobId} — No image slots, skipping`); return html; }
 
   const slotsToProcess = rawSlots.slice(0, imageCap);
   console.log(`Job ${jobId} — Processing ${slotsToProcess.length} slots`);
@@ -412,28 +526,27 @@ async function injectBrandedImages(html, userRequest, jobId) {
   const promptGenRequest = `You are a world-class brand photographer and creative director.
 Brand context: ${userRequest.substring(0, 800)}
 Industry: ${industry}
-For each image slot below, write a highly specific photorealistic image generation prompt.
-Requirements:
-- Match the brand's exact aesthetic, color palette, and mood
+For each image slot, write a highly specific photorealistic image generation prompt.
+- Match the brand aesthetic, color palette, and mood exactly
 - Be completely specific to what that slot shows
 - Make each prompt unique
-- Always end with ", no text, no watermarks, no logos, professional photography"
+- End with ", no text, no watermarks, no logos, professional photography"
 Slots:
 ${slotsToProcess.map((s, i) => `${i}. "${s.id}"`).join('\n')}
 Return ONLY a JSON array starting with [ immediately:
 [{"index":0,"prompt":"...","aspect_ratio":"16:9"},...]
-aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:3" for lifestyle`;
+aspect_ratio: "16:9" heroes/banners, "1:1" products/portraits/cards, "4:3" lifestyle`;
 
   let promptData = [];
   try {
     promptData = await callClaudeJson(promptGenRequest, 3000);
     console.log(`Job ${jobId} — Prompt generation succeeded: ${promptData.length} prompts`);
   } catch (error) {
-    console.error(`Job ${jobId} — Prompt generation failed (${error.message}) — using fallback`);
+    console.error(`Job ${jobId} — Prompt generation failed — using fallback`);
     promptData = slotsToProcess.map((s, i) => ({
       index: i,
-      prompt: `Premium ${industry} brand photography, cinematic lighting, luxury aesthetic, rich deep colors, no text, no watermarks, professional photography`,
-      aspect_ratio: (s.id.toLowerCase().includes('hero') || s.id.toLowerCase().includes('banner') || s.id.toLowerCase().includes('bg') || s.id.toLowerCase().includes('background')) ? '16:9' : '1:1'
+      prompt: `Premium ${industry} brand photography, cinematic lighting, no text, no watermarks, professional photography`,
+      aspect_ratio: (s.id.toLowerCase().includes('hero') || s.id.toLowerCase().includes('background')) ? '16:9' : '1:1'
     }));
   }
 
@@ -445,7 +558,7 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
       console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
       const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
       if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
-      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed after retries`);
+      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
       return { ...slot, generatedImage: img };
     })
   );
@@ -477,6 +590,10 @@ aspect_ratio: "16:9" for heroes/banners, "1:1" for products/portraits/cards, "4:
   return html;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BUILD PIPELINE
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.post('/build-async', async (req, res) => {
   const { userRequest, contactEmail: directEmail } = req.body;
   const contactEmail = directEmail || extractContactEmail(userRequest);
@@ -496,87 +613,138 @@ app.post('/build-async', async (req, res) => {
 
   (async () => {
     try {
-      // ── PASS 1: Full site — 32000 tokens to ensure complete output ───────
+
+      // ── LOGO GENERATION — Gemini generates professional SVG logo ─────────
+      console.log(`Job ${jobId} — Logo generation starting`);
+      jobs[jobId].phase = 'logo';
+      const { brandName, industry, colorPalette } = extractBrandInfo(userRequest);
+      console.log(`Job ${jobId} — Brand: ${brandName} | Industry: ${industry} | Colors: ${colorPalette}`);
+      const logoSvg = await generateLogoWithGemini(brandName, industry, colorPalette, userRequest);
+      if (logoSvg) console.log(`Job ${jobId} — Logo generated successfully`);
+      else console.log(`Job ${jobId} — Logo generation failed — Claude will design its own`);
+
+      // Build the logo injection block
+      const logoBlock = logoSvg
+        ? `\n<!-- BRAND LOGO — Use this exact SVG symbol in navbar and footer -->\n<svg style="display:none">${logoSvg}</svg>\n`
+        : '';
+
+      // Inject logo instructions into user request for Pass 1
+      const pass1UserRequest = logoSvg
+        ? `${userRequest}\n\n${logoBlock}\nIMPORTANT: The brand logo SVG symbol has been provided above with id="brand-logo". Use it exactly as provided in both navbar and footer with <use href="#brand-logo"/>. Do not redesign it.`
+        : userRequest;
+
+      // ── PASS 1: Full site structure, design, content ──────────────────────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
-      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
+      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, pass1UserRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
       if (pass1Html.length < 5000) throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
 
-      // ── PASS 2: Interactivity + image slot tagging — 24000 tokens ────────
+      // ── PASS 2: Full JS interactivity + image slot tagging ────────────────
       jobs[jobId].phase = 'pass2';
       console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
       const pass2Prompt = `You are an expert JavaScript developer and UX engineer.
 Upgrade this HTML file with two goals:
 
-GOAL 1 — COMPLETE INTERACTIVITY (every item below is mandatory):
+GOAL 1 — COMPLETE INTERACTIVITY (every single item is mandatory, no exceptions):
 
-NAVBAR (CRITICAL):
-- Remove ANY background color from the navbar default CSS state
-- navbar default: background: transparent !important; backdrop-filter: none !important;
-- Add JS: window.addEventListener('scroll', () => { const nav = document.querySelector('nav, header, .navbar, #navbar, [class*="nav"]'); if(nav) nav.classList.toggle('scrolled', window.scrollY > 80); });
-- Add CSS: nav.scrolled, header.scrolled, .navbar.scrolled, [class*="nav"].scrolled { background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(255,255,255,0.08) !important; }
-- Mobile hamburger menu
+NAVBAR (CRITICAL — fix this first):
+- Find the navbar/header element
+- Set its DEFAULT CSS: background: transparent !important; backdrop-filter: none !important;
+- Remove ANY existing background color from the default navbar state
+- Add this exact JS:
+  (function() {
+    const nav = document.querySelector('nav, header, .navbar, #navbar, #header');
+    if (!nav) return;
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 80) {
+        nav.style.background = 'rgba(10,10,10,0.97)';
+        nav.style.backdropFilter = 'blur(20px)';
+        nav.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+      } else {
+        nav.style.background = 'transparent';
+        nav.style.backdropFilter = 'none';
+        nav.style.borderBottom = 'none';
+      }
+    });
+  })();
 
-CUSTOM CURSOR:
-- 20px circle in accent color, fixed, pointer-events:none, z-index:9999
-- Smooth lerp mouse follow
-- Scales to 40px on hover over links/buttons
-- NEVER cursor:none
+CUSTOM CURSOR (CRITICAL — must be animated and branded):
+- Create div id="custom-cursor" with CSS: position:fixed; width:20px; height:20px; border-radius:50%; background: [site accent color]; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition: width 0.2s, height 0.2s, opacity 0.2s; mix-blend-mode: difference;
+- Add mousemove listener with lerp animation:
+  let curX = 0, curY = 0, tgX = 0, tgY = 0;
+  const cursor = document.getElementById('custom-cursor');
+  document.addEventListener('mousemove', e => { tgX = e.clientX; tgY = e.clientY; });
+  function animCursor() {
+    curX += (tgX - curX) / 8;
+    curY += (tgY - curY) / 8;
+    if(cursor) cursor.style.transform = 'translate(' + (curX-10) + 'px,' + (curY-10) + 'px)';
+    requestAnimationFrame(animCursor);
+  }
+  animCursor();
+  document.querySelectorAll('a, button, [role="button"]').forEach(el => {
+    el.addEventListener('mouseenter', () => { if(cursor) { cursor.style.width='40px'; cursor.style.height='40px'; cursor.style.opacity='0.7'; } });
+    el.addEventListener('mouseleave', () => { if(cursor) { cursor.style.width='20px'; cursor.style.height='20px'; cursor.style.opacity='1'; } });
+  });
+- NEVER set cursor:none anywhere
 
-FILTER TABS (CRITICAL — implement exactly this):
-- Add data-tab="name" to every tab button
-- Add data-tab-content="name" to every matching content section
-- JavaScript:
-  function initTabs() {
+FILTER TABS (CRITICAL):
+- Add data-tab="tabname" to every tab/filter button
+- Add data-tab-content="tabname" to every matching content container
+- Implement:
+  (function() {
     const tabs = document.querySelectorAll('[data-tab]');
     const contents = document.querySelectorAll('[data-tab-content]');
     if (!tabs.length) return;
-    tabs.forEach(btn => {
-      btn.addEventListener('click', () => {
-        tabs.forEach(b => b.classList.remove('active'));
-        contents.forEach(c => { c.style.display = 'none'; c.style.opacity = '0'; });
-        btn.classList.add('active');
-        const content = document.querySelector('[data-tab-content="' + btn.dataset.tab + '"]');
-        if (content) { content.style.display = 'block'; setTimeout(() => content.style.opacity = '1', 10); }
-      });
-    });
-    tabs[0].click();
-  }
-  initTabs();
+    function showTab(tabName) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+      contents.forEach(c => { c.style.display = c.dataset.tabContent === tabName ? 'block' : 'none'; });
+    }
+    tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+    showTab(tabs[0].dataset.tab);
+  })();
 
 FAQ ACCORDION (CRITICAL):
-- Every FAQ must have a complete written answer — write content if missing
-- One open at a time with smooth animation
+- Every FAQ item MUST have a complete written answer — if any answer is missing write it now
+- Answers must be 2-4 sentences of real useful content
+- Implement one-open-at-a-time accordion with smooth max-height animation
 
-CAROUSELS: All prev/next wrap around, auto-advance 5s, dots clickable
-COUNTERS: Count up on scroll using IntersectionObserver
-FORMS: Validate required fields, show success message
-SCROLL REVEALS: NEVER opacity:0 in CSS — JS adds "js-ready" to body, IntersectionObserver adds "revealed"
+CAROUSELS: All prev/next wrap, auto-advance 5s, dots clickable
+COUNTERS: Count up using IntersectionObserver on scroll into view
+FORMS: Validate required fields, show styled success message
+SMOOTH SCROLL: All anchor links scroll smoothly
+MOBILE MENU: Hamburger opens/closes nav overlay
+
+SCROLL REVEALS:
+- NEVER set opacity:0 in CSS on content
+- JS: document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('js-ready'); const reveals = document.querySelectorAll('.reveal'); const obs = new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold: 0.1}); reveals.forEach(r => obs.observe(r)); });
+- CSS: .js-ready .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; } .js-ready .reveal.revealed { opacity: 1; transform: translateY(0); }
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add data-slot to EVERY <img> tag — unique specific description of what image belongs there.
-Good: data-slot="hero-background-dark-moody-coffee-shop-interior-warm-lighting"
-Bad: data-slot="image-1" or data-slot="photo"
+Good: data-slot="hero-background-professional-plumber-toronto-home-dark-pipes"
+Bad: data-slot="image-1" or data-slot="photo" or data-slot="img"
+Every single <img> gets a unique descriptive data-slot — no exceptions.
 
-Do NOT change design, colors, fonts, or layout from Pass 1.
-Return the COMPLETE updated HTML — every line, nothing truncated.
+Do NOT change any design, colors, fonts, or layout from Pass 1.
+Return the COMPLETE updated HTML file — every line, nothing truncated or abbreviated.
 
-HTML:
+HTML TO UPGRADE:
 ${pass1Html}`;
 
       const pass2Html = await callClaude(
-        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Never truncate — return every line.',
+        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Return every single line — never truncate or abbreviate.',
         pass2Prompt,
-        24000
+        32000
       );
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
+      // Inject Formsubmit contact email
       const htmlWithForm = contactEmail ? injectContactEmail(pass2Html, contactEmail) : pass2Html;
       if (contactEmail) console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
 
-      // ── PASS 3: Images ────────────────────────────────────────────────────
+      // ── PASS 3: Branded image generation & injection ──────────────────────
       jobs[jobId].phase = 'pass3';
       const finalHtml = await injectBrandedImages(htmlWithForm, userRequest, jobId);
       jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
