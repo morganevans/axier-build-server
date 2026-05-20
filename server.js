@@ -14,7 +14,7 @@ const jobs = {};
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MASTER_SYSTEM_PROMPT = `You are the world's best UI/UX designer and frontend developer combined.
-You build stunning, award-winning websites that look like they cost $10,000–$50,000 to produce.
+You build stunning, award-winning websites that look like they cost $10,000-$50,000 to produce.
 Every site you build is a complete, multi-section, fully responsive HTML file.
 
 DESIGN PHILOSOPHY:
@@ -33,11 +33,11 @@ LOGO REQUIREMENTS (CRITICAL):
 - The logo SVG will be provided to you as a <symbol id="brand-logo"> block — USE IT EXACTLY AS PROVIDED
 - Place it in the navbar with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
 - Place it in the footer with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
-- Size it appropriately with CSS: .logo-svg { width: 180px; height: 45px; }
+- Size it with CSS: .logo-svg { width: 180px; height: 45px; }
 - DO NOT redesign or modify the provided logo
 
 EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
-1. Fixed navbar (transparent → solid on scroll) with provided SVG logo and nav links
+1. Fixed navbar (transparent to solid on scroll) with provided SVG logo and nav links
 2. Full-screen hero (100vh) with headline, subheading, CTAs, and hero background image
 3. Stats/social proof bar with animated counters
 4. Services or Products section with cards (minimum 6 items) with icons and full descriptions
@@ -52,7 +52,7 @@ EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
 IMAGE REQUIREMENTS (CRITICAL):
 - For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
 - hero: 1920x1080, team portraits: 400x400, service cards: 600x400, about: 800x600
-- HERO: <img> tag absolutely positioned, position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Dark overlay div z-index:1. Content z-index:2.
+- HERO SECTION: <img> absolutely positioned, position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Dark overlay div z-index:1. Content z-index:2.
 - NO CSS background-image with real URLs anywhere
 - NO Unsplash or external image URLs
 
@@ -84,10 +84,10 @@ CAROUSELS:
 - prev/next wrap around, auto-advance 5s, dots clickable
 
 JAVASCRIPT REQUIREMENTS:
-- Navbar scroll transparency → solid
+- Navbar scroll transparency to solid
 - Custom branded cursor with lerp
 - All tabs/filters working
-- FAQ accordion
+- FAQ accordion with full answers
 - Animated counters on scroll
 - Carousel/slider
 - Form validation + success state
@@ -155,7 +155,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
       .jpeg({ quality: 82, progressive: true }).toBuffer();
     const originalKb = Math.round(inputBuffer.length / 1024);
     const compressedKb = Math.round(outputBuffer.length / 1024);
-    console.log(`Image compressed: ${originalKb}kb → ${compressedKb}kb`);
+    console.log(`Image compressed: ${originalKb}kb -> ${compressedKb}kb`);
     return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
   } catch (error) {
     console.error('Image compression error:', error.message);
@@ -164,7 +164,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LOGO GENERATION — Gemini generates a professional SVG logo
+// LOGO GENERATION — Gemini Flash generates professional SVG logo
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateLogoWithGemini(brandName, industry, colorPalette, userRequest) {
@@ -213,9 +213,8 @@ No explanation. No markdown. Just the <symbol> element starting with <symbol and
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) { console.log('Logo gen: no text returned'); return null; }
 
-    // Extract the symbol element
     const symbolMatch = text.match(/<symbol[\s\S]*?<\/symbol>/i);
-    if (!symbolMatch) { console.log('Logo gen: no symbol element found in response'); return null; }
+    if (!symbolMatch) { console.log('Logo gen: no symbol element found'); return null; }
 
     console.log('Logo generated successfully via Gemini');
     return symbolMatch[0];
@@ -226,32 +225,35 @@ No explanation. No markdown. Just the <symbol> element starting with <symbol and
   }
 }
 
-// Extract brand name and colors from userRequest
 function extractBrandInfo(userRequest) {
   const text = userRequest.toLowerCase();
 
-  // Try to find brand name — look for quoted names or "called X" or "named X"
   let brandName = 'Brand';
   const nameMatch = userRequest.match(/(?:called|named|for)\s+([A-Z][A-Za-z\s&]+?)(?:\s*[—\-,.]|\s+is\s|\s+we\s|\s+a\s)/);
   if (nameMatch) brandName = nameMatch[1].trim();
 
-  // Detect industry
   let industry = 'business';
-  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrical') || text.includes('trades')) industry = 'trades';
-  else if (text.includes('coffee') || text.includes('cafe')) industry = 'coffee';
-  else if (text.includes('spa') || text.includes('wellness') || text.includes('med spa')) industry = 'wellness';
-  else if (text.includes('restaurant') || text.includes('dining')) industry = 'restaurant';
-  else if (text.includes('fitness') || text.includes('gym')) industry = 'fitness';
+  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrical') || text.includes('trades') || text.includes('contractor')) industry = 'trades';
+  else if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) industry = 'coffee';
+  else if (text.includes('spa') || text.includes('wellness') || text.includes('yoga')) industry = 'wellness';
+  else if (text.includes('med spa') || text.includes('medspa') || text.includes('aesthetic') || text.includes('injectable')) industry = 'aesthetics_clinic';
+  else if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) industry = 'restaurant';
+  else if (text.includes('fitness') || text.includes('gym') || text.includes('workout')) industry = 'fitness';
   else if (text.includes('real estate') || text.includes('property')) industry = 'real_estate';
   else if (text.includes('tech') || text.includes('software') || text.includes('saas')) industry = 'technology';
-  else if (text.includes('medical') || text.includes('clinic') || text.includes('aesthetic')) industry = 'medical';
+  else if (text.includes('medical') || text.includes('clinic')) industry = 'medical';
   else if (text.includes('jewelry') || text.includes('jewellery')) industry = 'jewelry';
-  else if (text.includes('fashion') || text.includes('clothing')) industry = 'fashion';
+  else if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) industry = 'fashion';
+  else if (text.includes('skincare') || text.includes('beauty') || text.includes('cosmetic')) industry = 'skincare';
+  else if (text.includes('hotel') || text.includes('resort') || text.includes('travel')) industry = 'hospitality';
+  else if (text.includes('music') || text.includes('band') || text.includes('artist')) industry = 'music';
+  else if (text.includes('photography') || text.includes('photographer')) industry = 'photography';
+  else if (text.includes('store') || text.includes('shop') || text.includes('ecommerce')) industry = 'ecommerce';
+  else if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) industry = 'portfolio';
 
-  // Extract color mentions
-  const colorKeywords = ['navy', 'orange', 'gold', 'teal', 'green', 'blue', 'red', 'black', 'white', 'grey', 'purple', 'amber'];
+  const colorKeywords = ['navy', 'orange', 'gold', 'teal', 'green', 'blue', 'red', 'black', 'white', 'grey', 'purple', 'amber', 'steel', 'charcoal', 'cream', 'beige'];
   const foundColors = colorKeywords.filter(c => text.includes(c));
-  const colorPalette = foundColors.length > 0 ? foundColors.join(', ') : 'professional, industry-appropriate colors';
+  const colorPalette = foundColors.length > 0 ? foundColors.join(', ') : 'professional industry-appropriate colors';
 
   return { brandName, industry, colorPalette };
 }
@@ -359,7 +361,7 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION
+// IMAGE GENERATION — Gemini Pro with fallback + retry
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
@@ -445,7 +447,7 @@ async function generateImageFallback(prompt) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLOT EXTRACTION
+// SLOT EXTRACTION — catches <img> tags, placeholders, and CSS background-image
 // ─────────────────────────────────────────────────────────────────────────────
 
 function extractImageSlots(html) {
@@ -500,14 +502,14 @@ function extractImageSlots(html) {
       const contextStart = Math.max(0, match.index - 200);
       const context = html.substring(contextStart, match.index).toLowerCase();
       const isHero = context.includes('hero') || context.includes('banner') || context.includes('section-hero');
-      slots.push({ id: isHero ? `hero-background-fullscreen` : `bg-${slots.length}`, src, type: 'background' });
+      slots.push({ id: isHero ? 'hero-background-fullscreen' : `bg-${slots.length}`, src, type: 'background' });
     }
   }
   return slots;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASS 3 — IMAGE INJECTION
+// PASS 3 — CONTEXT-AWARE BRANDED IMAGE INJECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function injectBrandedImages(html, userRequest, jobId) {
@@ -557,8 +559,8 @@ aspect_ratio: "16:9" heroes/banners, "1:1" products/portraits/cards, "4:3" lifes
       if (!promptEntry) return { ...slot, generatedImage: null };
       console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
       const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
-      if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
-      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
+      if (img) console.log(`Job ${jobId} — [${i + 1}] success`);
+      else console.error(`Job ${jobId} — [${i + 1}] failed`);
       return { ...slot, generatedImage: img };
     })
   );
@@ -614,7 +616,7 @@ app.post('/build-async', async (req, res) => {
   (async () => {
     try {
 
-      // ── LOGO GENERATION — Gemini generates professional SVG logo ─────────
+      // ── LOGO: Gemini generates professional SVG logo ──────────────────────
       console.log(`Job ${jobId} — Logo generation starting`);
       jobs[jobId].phase = 'logo';
       const { brandName, industry, colorPalette } = extractBrandInfo(userRequest);
@@ -623,36 +625,29 @@ app.post('/build-async', async (req, res) => {
       if (logoSvg) console.log(`Job ${jobId} — Logo generated successfully`);
       else console.log(`Job ${jobId} — Logo generation failed — Claude will design its own`);
 
-      // Build the logo injection block
-      const logoBlock = logoSvg
-        ? `\n<!-- BRAND LOGO — Use this exact SVG symbol in navbar and footer -->\n<svg style="display:none">${logoSvg}</svg>\n`
-        : '';
-
-      // Inject logo instructions into user request for Pass 1
       const pass1UserRequest = logoSvg
-        ? `${userRequest}\n\n${logoBlock}\nIMPORTANT: The brand logo SVG symbol has been provided above with id="brand-logo". Use it exactly as provided in both navbar and footer with <use href="#brand-logo"/>. Do not redesign it.`
+        ? `${userRequest}\n\n<!-- BRAND LOGO — Use this exact SVG symbol in navbar and footer -->\n<svg style="display:none">${logoSvg}</svg>\n\nIMPORTANT: The brand logo SVG symbol has been provided above with id="brand-logo". Use it exactly as provided in both navbar and footer with <use href="#brand-logo"/>. Do not redesign it.`
         : userRequest;
 
-      // ── PASS 1: Full site structure, design, content ──────────────────────
+      // ── PASS 1: Full site structure, design, content — 32k tokens ─────────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
       const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, pass1UserRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
       if (pass1Html.length < 5000) throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
 
-      // ── PASS 2: Full JS interactivity + image slot tagging ────────────────
+      // ── PASS 2: Full JS interactivity + image slot tagging — 32k tokens ───
       jobs[jobId].phase = 'pass2';
       console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
       const pass2Prompt = `You are an expert JavaScript developer and UX engineer.
 Upgrade this HTML file with two goals:
 
-GOAL 1 — COMPLETE INTERACTIVITY (every single item is mandatory, no exceptions):
+GOAL 1 — COMPLETE INTERACTIVITY (every single item is mandatory):
 
-NAVBAR (CRITICAL — fix this first):
-- Find the navbar/header element
-- Set its DEFAULT CSS: background: transparent !important; backdrop-filter: none !important;
-- Remove ANY existing background color from the default navbar state
+NAVBAR (CRITICAL — do this first):
+- Find the navbar/header element and remove ANY existing background color from its default CSS
+- Set default CSS: background: transparent !important; backdrop-filter: none !important;
 - Add this exact JS:
   (function() {
     const nav = document.querySelector('nav, header, .navbar, #navbar, #header');
@@ -670,62 +665,66 @@ NAVBAR (CRITICAL — fix this first):
     });
   })();
 
-CUSTOM CURSOR (CRITICAL — must be animated and branded):
-- Create div id="custom-cursor" with CSS: position:fixed; width:20px; height:20px; border-radius:50%; background: [site accent color]; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); transition: width 0.2s, height 0.2s, opacity 0.2s; mix-blend-mode: difference;
-- Add mousemove listener with lerp animation:
-  let curX = 0, curY = 0, tgX = 0, tgY = 0;
-  const cursor = document.getElementById('custom-cursor');
-  document.addEventListener('mousemove', e => { tgX = e.clientX; tgY = e.clientY; });
-  function animCursor() {
-    curX += (tgX - curX) / 8;
-    curY += (tgY - curY) / 8;
-    if(cursor) cursor.style.transform = 'translate(' + (curX-10) + 'px,' + (curY-10) + 'px)';
-    requestAnimationFrame(animCursor);
-  }
-  animCursor();
-  document.querySelectorAll('a, button, [role="button"]').forEach(el => {
-    el.addEventListener('mouseenter', () => { if(cursor) { cursor.style.width='40px'; cursor.style.height='40px'; cursor.style.opacity='0.7'; } });
-    el.addEventListener('mouseleave', () => { if(cursor) { cursor.style.width='20px'; cursor.style.height='20px'; cursor.style.opacity='1'; } });
-  });
+CUSTOM CURSOR (CRITICAL — must be animated):
+- Create: <div id="custom-cursor"></div> at top of body
+- CSS: #custom-cursor { position:fixed; width:20px; height:20px; border-radius:50%; pointer-events:none; z-index:9999; transition: width 0.2s, height 0.2s, opacity 0.2s; mix-blend-mode:difference; }
+- Set background color to the site's primary accent color
+- JS lerp animation:
+  (function() {
+    let curX = 0, curY = 0, tgX = 0, tgY = 0;
+    const cursor = document.getElementById('custom-cursor');
+    if (!cursor) return;
+    document.addEventListener('mousemove', e => { tgX = e.clientX; tgY = e.clientY; });
+    function animCursor() {
+      curX += (tgX - curX) / 8;
+      curY += (tgY - curY) / 8;
+      cursor.style.transform = 'translate(' + (curX - 10) + 'px,' + (curY - 10) + 'px)';
+      requestAnimationFrame(animCursor);
+    }
+    animCursor();
+    document.querySelectorAll('a,button,[role="button"]').forEach(el => {
+      el.addEventListener('mouseenter', () => { cursor.style.width='40px'; cursor.style.height='40px'; cursor.style.opacity='0.7'; });
+      el.addEventListener('mouseleave', () => { cursor.style.width='20px'; cursor.style.height='20px'; cursor.style.opacity='1'; });
+    });
+  })();
 - NEVER set cursor:none anywhere
 
-FILTER TABS (CRITICAL):
+FILTER TABS (CRITICAL — all must work):
 - Add data-tab="tabname" to every tab/filter button
 - Add data-tab-content="tabname" to every matching content container
-- Implement:
+- JS:
   (function() {
     const tabs = document.querySelectorAll('[data-tab]');
     const contents = document.querySelectorAll('[data-tab-content]');
     if (!tabs.length) return;
-    function showTab(tabName) {
-      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
-      contents.forEach(c => { c.style.display = c.dataset.tabContent === tabName ? 'block' : 'none'; });
+    function showTab(name) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      contents.forEach(c => { c.style.display = c.dataset.tabContent === name ? 'block' : 'none'; });
     }
     tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
     showTab(tabs[0].dataset.tab);
   })();
 
 FAQ ACCORDION (CRITICAL):
-- Every FAQ item MUST have a complete written answer — if any answer is missing write it now
-- Answers must be 2-4 sentences of real useful content
-- Implement one-open-at-a-time accordion with smooth max-height animation
+- Every FAQ item MUST have a complete written answer — if any answer is missing write 2-4 sentences now
+- One open at a time, smooth max-height animation
 
-CAROUSELS: All prev/next wrap, auto-advance 5s, dots clickable
-COUNTERS: Count up using IntersectionObserver on scroll into view
-FORMS: Validate required fields, show styled success message
+CAROUSELS: All prev/next wrap around, auto-advance 5s, dots clickable and update
+COUNTERS: Count up using IntersectionObserver when scrolled into view
+FORMS: Validate required fields, show styled success message on submit
 SMOOTH SCROLL: All anchor links scroll smoothly
 MOBILE MENU: Hamburger opens/closes nav overlay
 
 SCROLL REVEALS:
-- NEVER set opacity:0 in CSS on content
-- JS: document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('js-ready'); const reveals = document.querySelectorAll('.reveal'); const obs = new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold: 0.1}); reveals.forEach(r => obs.observe(r)); });
-- CSS: .js-ready .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; } .js-ready .reveal.revealed { opacity: 1; transform: translateY(0); }
+- NEVER set opacity:0 in CSS on content elements
+- JS on DOMContentLoaded: document.body.classList.add('js-ready'); new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold:0.1}).observe each .reveal element
+- CSS: .js-ready .reveal { opacity:0; transform:translateY(30px); transition:opacity 0.7s ease,transform 0.7s ease; } .js-ready .reveal.revealed { opacity:1; transform:translateY(0); }
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
 Add data-slot to EVERY <img> tag — unique specific description of what image belongs there.
-Good: data-slot="hero-background-professional-plumber-toronto-home-dark-pipes"
+Good: data-slot="hero-background-professional-plumber-toronto-basement-dark-pipes"
 Bad: data-slot="image-1" or data-slot="photo" or data-slot="img"
-Every single <img> gets a unique descriptive data-slot — no exceptions.
+Every single <img> tag gets a unique descriptive data-slot — no exceptions.
 
 Do NOT change any design, colors, fonts, or layout from Pass 1.
 Return the COMPLETE updated HTML file — every line, nothing truncated or abbreviated.
@@ -740,7 +739,7 @@ ${pass1Html}`;
       );
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
-      // Inject Formsubmit contact email
+      // Inject Formsubmit contact email — no signup required
       const htmlWithForm = contactEmail ? injectContactEmail(pass2Html, contactEmail) : pass2Html;
       if (contactEmail) console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
 
