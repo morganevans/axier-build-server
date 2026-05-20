@@ -196,7 +196,7 @@ Output ONLY a valid SVG <symbol> element in this exact format:
 No explanation. No markdown. Just the <symbol> element starting with <symbol and ending with </symbol>.`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -264,7 +264,7 @@ function extractBrandInfo(userRequest) {
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 600000);
+  const timeout = setTimeout(() => controller.abort(), 900000);
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
