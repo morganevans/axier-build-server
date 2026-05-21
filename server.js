@@ -29,15 +29,36 @@ DESIGN PHILOSOPHY:
 - CURSOR RULE: Always design a custom branded cursor overlay — a 20px circle in the site's primary accent color, fixed position, pointer-events:none, z-index:9999. Use JS mousemove with smooth lerp to follow the cursor. Scale to 40px on hover over links/buttons. NEVER cursor:none — default cursor always visible underneath.
 - SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden in CSS on content. JS adds "js-ready" class to body on DOMContentLoaded, then CSS targets .js-ready .reveal with opacity:0 and translateY(30px), then IntersectionObserver adds "revealed" class.
 
-LOGO REQUIREMENTS (CRITICAL):
-- The logo SVG will be provided to you as a <symbol id="brand-logo"> block — USE IT EXACTLY AS PROVIDED
-- Place it in the navbar with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
-- Place it in the footer with: <svg class="logo-svg"><use href="#brand-logo"/></svg>
-- Size it with CSS: .logo-svg { width: 180px; height: 45px; }
-- DO NOT redesign or modify the provided logo
+LOGO REQUIREMENTS (CRITICAL — DO THIS FIRST BEFORE ANYTHING ELSE):
+Step 1: Design the SVG logo FIRST as a <symbol id="brand-logo" viewBox="0 0 280 60"> element.
+Step 2: Derive the entire site's color palette, typography, and visual language FROM the logo.
+Step 3: Every section of the site must feel like it belongs to the same brand as the logo.
+
+LOGO DESIGN RULES:
+- The logo MUST have TWO parts: a geometric icon/mark on the left AND a styled wordmark on the right
+- ICON: Use only clean geometric SVG shapes — circles, arcs, lines, polygons, simple paths
+  * Think Nike swoosh simplicity — one clean geometric idea executed perfectly
+  * Aerospace/space: orbital arc, geometric rocket silhouette, or precision crosshair
+  * Coffee/food: minimal cup shape, leaf, or ingredient form using ellipses and lines
+  * Medical/wellness: clean circle with inner element, minimal cross, or leaf form
+  * Trades: bold wrench silhouette, pipe cross-section, or structural geometric
+  * Tech/software: precise geometric grid, circuit node, or angular mark
+  * Fashion/luxury: refined single letterform or elegant abstract mark
+  * The icon must be clearly readable at 30px height — NO abstract blobs, NO organic squiggles
+- WORDMARK: Style the brand name with intentional SVG text
+  * Apply letter-spacing, font-weight reference in fontFamily, or color accent on one letter
+  * Use a font that matches the brand personality — serif for luxury, sans for tech, etc
+  * Never just plain unstyled text
+- COLORS: Choose 2-3 brand colors appropriate to the industry
+  * These exact colors must be used as the site accent colors throughout
+  * Hex codes must be defined and consistent
+- Place the <symbol> inside a hidden <svg style="display:none"> at the very top of <body>
+- Use it in navbar: <svg class="logo-svg" style="width:180px;height:45px;display:block"><use href="#brand-logo"/></svg>
+- Use it in footer: <svg class="logo-svg" style="width:180px;height:45px;display:block"><use href="#brand-logo"/></svg>
+- The logo must look like it was designed by a professional brand studio
 
 EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
-1. Fixed navbar (transparent to solid on scroll) with provided SVG logo and nav links
+1. Fixed navbar (transparent to solid on scroll) with SVG logo and nav links
 2. Full-screen hero (100vh) with headline, subheading, CTAs, and hero background image
 3. Stats/social proof bar with animated counters
 4. Services or Products section with cards (minimum 6 items) with icons and full descriptions
@@ -47,7 +68,7 @@ EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
 8. Testimonials carousel with star ratings (minimum 3 testimonials)
 9. FAQ accordion — minimum 6 questions each with 2-4 sentence answers — NEVER leave answers empty
 10. Contact section with form using action="CONTACT_FORM_ENDPOINT" method="POST"
-11. Footer with logo, links, social icons, and copyright
+11. Footer with SVG logo, links, social icons, and copyright
 
 IMAGE REQUIREMENTS (CRITICAL):
 - For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
@@ -130,11 +151,15 @@ function safeParseJson(text) {
   return JSON.parse(cleaned);
 }
 
+// Inject Formsubmit contact email — no signup required
+// First submission triggers one-time activation email to client
+// After activation all submissions go straight to inbox forever
 function injectContactEmail(html, contactEmail) {
   if (!contactEmail) return html;
   return html.replace(/CONTACT_FORM_ENDPOINT/g, `https://formsubmit.co/${contactEmail.trim()}`);
 }
 
+// Extract contact email from userRequest — embedded as CONTACT_EMAIL: value
 function extractContactEmail(userRequest) {
   if (!userRequest) return null;
   const match = userRequest.match(/CONTACT_EMAIL:\s*([^\s\n]+)/i);
@@ -161,101 +186,6 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
     console.error('Image compression error:', error.message);
     return base64DataUrl;
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LOGO GENERATION — Gemini Flash generates professional SVG logo
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function generateLogoWithGemini(brandName, industry, colorPalette, userRequest) {
-  try {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) { console.log('No Google API key — skipping logo generation'); return null; }
-
-    const logoPrompt = `You are a world-class SVG logo designer. Create a professional SVG logo for this brand.
-
-Brand: ${brandName}
-Industry: ${industry}
-Colors: ${colorPalette}
-Brief: ${userRequest.substring(0, 400)}
-
-Design rules:
-- Clean, geometric icon mark — simple shapes only (circles, lines, arcs, polygons)
-- NO abstract blobs, NO complex organic paths, NO broken shapes
-- Icon + wordmark side by side
-- Professional enough for a business card
-- The icon must be instantly recognizable and relevant to the industry
-- Use the provided brand colors
-
-Output ONLY a valid SVG <symbol> element in this exact format:
-<symbol id="brand-logo" viewBox="0 0 280 60">
-  <!-- icon mark on the left -->
-  <!-- wordmark text on the right -->
-</symbol>
-
-No explanation. No markdown. Just the <symbol> element starting with <symbol and ending with </symbol>.`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: logoPrompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
-        })
-      }
-    );
-
-    const data = await response.json();
-    if (!response.ok) { console.error('Logo gen error:', JSON.stringify(data)); return null; }
-
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) { console.log('Logo gen: no text returned'); return null; }
-
-    const symbolMatch = text.match(/<symbol[\s\S]*?<\/symbol>/i);
-    if (!symbolMatch) { console.log('Logo gen: no symbol element found'); return null; }
-
-    console.log('Logo generated successfully via Gemini');
-    return symbolMatch[0];
-
-  } catch (error) {
-    console.error('Logo generation error:', error.message);
-    return null;
-  }
-}
-
-function extractBrandInfo(userRequest) {
-  const text = userRequest.toLowerCase();
-
-  let brandName = 'Brand';
-  const nameMatch = userRequest.match(/(?:called|named|for)\s+([A-Z][A-Za-z\s&]+?)(?:\s*[—\-,.]|\s+is\s|\s+we\s|\s+a\s)/);
-  if (nameMatch) brandName = nameMatch[1].trim();
-
-  let industry = 'business';
-  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrical') || text.includes('trades') || text.includes('contractor')) industry = 'trades';
-  else if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) industry = 'coffee';
-  else if (text.includes('spa') || text.includes('wellness') || text.includes('yoga')) industry = 'wellness';
-  else if (text.includes('med spa') || text.includes('medspa') || text.includes('aesthetic') || text.includes('injectable')) industry = 'aesthetics_clinic';
-  else if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) industry = 'restaurant';
-  else if (text.includes('fitness') || text.includes('gym') || text.includes('workout')) industry = 'fitness';
-  else if (text.includes('real estate') || text.includes('property')) industry = 'real_estate';
-  else if (text.includes('tech') || text.includes('software') || text.includes('saas')) industry = 'technology';
-  else if (text.includes('medical') || text.includes('clinic')) industry = 'medical';
-  else if (text.includes('jewelry') || text.includes('jewellery')) industry = 'jewelry';
-  else if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) industry = 'fashion';
-  else if (text.includes('skincare') || text.includes('beauty') || text.includes('cosmetic')) industry = 'skincare';
-  else if (text.includes('hotel') || text.includes('resort') || text.includes('travel')) industry = 'hospitality';
-  else if (text.includes('music') || text.includes('band') || text.includes('artist')) industry = 'music';
-  else if (text.includes('photography') || text.includes('photographer')) industry = 'photography';
-  else if (text.includes('store') || text.includes('shop') || text.includes('ecommerce')) industry = 'ecommerce';
-  else if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) industry = 'portfolio';
-
-  const colorKeywords = ['navy', 'orange', 'gold', 'teal', 'green', 'blue', 'red', 'black', 'white', 'grey', 'purple', 'amber', 'steel', 'charcoal', 'cream', 'beige'];
-  const foundColors = colorKeywords.filter(c => text.includes(c));
-  const colorPalette = foundColors.length > 0 ? foundColors.join(', ') : 'professional industry-appropriate colors';
-
-  return { brandName, industry, colorPalette };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -345,6 +275,7 @@ function detectIndustry(text) {
   if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('injectable') || text.includes('med spa') || text.includes('medspa')) return 'aesthetics_clinic';
   if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
   if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
+  if (text.includes('aerospace') || text.includes('rocket') || text.includes('space') || text.includes('satellite')) return 'aerospace';
   if (text.includes('landing') || text.includes('app')) return 'saas';
   return 'business';
 }
@@ -354,14 +285,15 @@ function getImageCap(industry) {
     ecommerce: 16, fashion: 14, skincare: 12, restaurant: 12,
     jewelry: 12, hospitality: 12, aesthetics_clinic: 12, wellness: 10,
     fitness: 10, real_estate: 10, photography: 10, coffee: 10,
-    trades: 10, music: 8, robotics: 8, portfolio: 8, business: 8,
-    saas: 6, technology: 6,
+    trades: 10, aerospace: 10, music: 8, robotics: 8, portfolio: 8,
+    business: 8, saas: 6, technology: 6,
   };
   return caps[industry] || 8;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — Gemini Pro with fallback + retry
+// IMAGE GENERATION — gemini-2.5-flash-preview-05-20 as primary
+// (gemini-3-pro-image-preview was deprecated March 9 2026)
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
@@ -387,7 +319,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) { console.error('GOOGLE_API_KEY not set'); return null; }
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -400,7 +332,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     const data = await response.json();
     if (!response.ok) {
       console.error('Image gen API error:', JSON.stringify(data));
-      return await generateImageFallback(prompt);
+      return null;
     }
     for (const part of data.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData) {
@@ -409,39 +341,9 @@ async function generateImage(prompt, aspectRatio = '1:1') {
       }
     }
     console.error('Image gen: no inlineData in response');
-    return await generateImageFallback(prompt);
+    return null;
   } catch (error) {
     console.error('Image generation error:', error.message);
-    return null;
-  }
-}
-
-async function generateImageFallback(prompt) {
-  try {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    console.log('Trying fallback: gemini-2.5-flash-preview');
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-        })
-      }
-    );
-    const data = await response.json();
-    if (!response.ok) { console.error('Fallback error:', JSON.stringify(data)); return null; }
-    for (const part of data.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        return await compressBase64Image(raw, 1200);
-      }
-    }
-    return null;
-  } catch (error) {
-    console.error('Fallback error:', error.message);
     return null;
   }
 }
@@ -559,8 +461,8 @@ aspect_ratio: "16:9" heroes/banners, "1:1" products/portraits/cards, "4:3" lifes
       if (!promptEntry) return { ...slot, generatedImage: null };
       console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
       const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
-      if (img) console.log(`Job ${jobId} — [${i + 1}] success`);
-      else console.error(`Job ${jobId} — [${i + 1}] failed`);
+      if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
+      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
       return { ...slot, generatedImage: img };
     })
   );
@@ -616,27 +518,14 @@ app.post('/build-async', async (req, res) => {
   (async () => {
     try {
 
-      // ── LOGO: Gemini generates professional SVG logo ──────────────────────
-      console.log(`Job ${jobId} — Logo generation starting`);
-      jobs[jobId].phase = 'logo';
-      const { brandName, industry, colorPalette } = extractBrandInfo(userRequest);
-      console.log(`Job ${jobId} — Brand: ${brandName} | Industry: ${industry} | Colors: ${colorPalette}`);
-      const logoSvg = await generateLogoWithGemini(brandName, industry, colorPalette, userRequest);
-      if (logoSvg) console.log(`Job ${jobId} — Logo generated successfully`);
-      else console.log(`Job ${jobId} — Logo generation failed — Claude will design its own`);
-
-      const pass1UserRequest = logoSvg
-        ? `${userRequest}\n\n<!-- BRAND LOGO — Use this exact SVG symbol in navbar and footer -->\n<svg style="display:none">${logoSvg}</svg>\n\nIMPORTANT: The brand logo SVG symbol has been provided above with id="brand-logo". Use it exactly as provided in both navbar and footer with <use href="#brand-logo"/>. Do not redesign it.`
-        : userRequest;
-
-      // ── PASS 1: Full site structure, design, content — 32k tokens ─────────
+      // ── PASS 1: Full site structure, design, content, logo ────────────────
       console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
       jobs[jobId].phase = 'pass1';
-      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, pass1UserRequest, 32000);
+      const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
       console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
       if (pass1Html.length < 5000) throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
 
-      // ── PASS 2: Full JS interactivity + image slot tagging — 32k tokens ───
+      // ── PASS 2: Full JS interactivity + image slot tagging ────────────────
       jobs[jobId].phase = 'pass2';
       console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
@@ -717,7 +606,7 @@ MOBILE MENU: Hamburger opens/closes nav overlay
 
 SCROLL REVEALS:
 - NEVER set opacity:0 in CSS on content elements
-- JS on DOMContentLoaded: document.body.classList.add('js-ready'); new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold:0.1}).observe each .reveal element
+- JS: document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('js-ready'); document.querySelectorAll('.reveal').forEach(el => { new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold:0.1}).observe(el); }); });
 - CSS: .js-ready .reveal { opacity:0; transform:translateY(30px); transition:opacity 0.7s ease,transform 0.7s ease; } .js-ready .reveal.revealed { opacity:1; transform:translateY(0); }
 
 GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
@@ -726,7 +615,7 @@ Good: data-slot="hero-background-professional-plumber-toronto-basement-dark-pipe
 Bad: data-slot="image-1" or data-slot="photo" or data-slot="img"
 Every single <img> tag gets a unique descriptive data-slot — no exceptions.
 
-Do NOT change any design, colors, fonts, or layout from Pass 1.
+Do NOT change any design, colors, fonts, logo, or layout from Pass 1.
 Return the COMPLETE updated HTML file — every line, nothing truncated or abbreviated.
 
 HTML TO UPGRADE:
@@ -739,7 +628,7 @@ ${pass1Html}`;
       );
       console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
 
-      // Inject Formsubmit contact email — no signup required
+      // Inject Formsubmit contact email
       const htmlWithForm = contactEmail ? injectContactEmail(pass2Html, contactEmail) : pass2Html;
       if (contactEmail) console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
 
