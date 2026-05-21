@@ -20,16 +20,15 @@ Every site is a complete, single HTML file with all CSS and JS included and full
 
 ════════════════════════════════════════════════════════════════════════
 STEP 1 — DESIGN THE BRAND IDENTITY FIRST (before writing any HTML)
-This is the most important step. The entire site derives from the brand.
 ════════════════════════════════════════════════════════════════════════
 
-Before writing a single line of HTML, mentally design:
+Before writing a single line of HTML, design:
   A) The logo mark + wordmark
-  B) The color palette (3-4 vars)
+  B) The color palette (CSS vars)
   C) The typography pairing
-  D) The visual tone and texture language
+  D) Visual tone and texture language
 
-Then build the ENTIRE site to match that brand identity.
+Then build the ENTIRE site to match that brand identity consistently.
 
 ──── A) LOGO — NON-NEGOTIABLE QUALITY STANDARD ────
 
@@ -38,409 +37,348 @@ Placed inside <svg style="display:none"> at top of <body>.
 Used everywhere as: <svg style="width:200px;height:50px;display:block"><use href="#brand-logo"/></svg>
 
 THE ICON MARK (left ~65×65 of the viewBox):
-Choose ONE of these construction methods — execute it with mastery:
+Choose ONE construction method and execute it with mastery:
 
 METHOD A — COMPOUND OVERLAP MARK:
-  Take 2-3 geometric primitives (circles, ellipses, polygons, arcs).
-  Offset or rotate them so they partially overlap.
-  Use <clipPath> so the overlap zone shows a different fill (the accent color).
-  Outer shapes: 2-3px stroke in a secondary color, semi-transparent fill.
-  Result: a layered, dimensional mark that looks engineered.
-  Example for aerospace: two ellipses at 45° angles, overlap zone filled electric yellow,
-  outer rings thin cyan strokes — suggesting orbital intersection paths.
+  2-3 geometric primitives (circles, ellipses, polygons) offset so they partially overlap.
+  Use <clipPath> so the overlap zone shows a different accent fill.
+  Outer shapes: 2-3px stroke, semi-transparent fill.
+  Result: layered, dimensional mark that looks engineered.
 
 METHOD B — DECONSTRUCTED LETTERFORM:
-  Take the brand's first letter. Break it into 2-4 thick rectangular/polygonal strokes.
-  Recompose with deliberate spacing, rotation, or extension beyond the bounding box.
-  Add one accent element: a dot, arc, underline, or encircling ring in the accent color.
-  Font weight equivalent: 900. Stroke ends: square caps for tech, round for organic brands.
-  Example: "A" as two thick angled rects (fill: white) + accent-colored crossbar rect
-  + thin partial circle arc sweeping from top-left to bottom-right.
+  Brand's first letter broken into 2-4 thick rectangular/polygonal strokes.
+  Recompose with deliberate spacing, rotation or extension.
+  Add one accent element: dot, arc, underline or encircling ring in accent color.
 
 METHOD C — CONCEPT SYMBOL:
-  A single geometric concept that represents the brand's core idea.
+  Single geometric concept representing the brand's core idea.
   Built ONLY from SVG primitives: rect, circle, ellipse, polygon, path, line.
-  Must use a <linearGradient> or <radialGradient> inside <defs> for at least one element.
-  Must have a <filter> with feGaussianBlur for a subtle glow on the key element.
-  Industry examples:
-  - Aerospace: tapered exhaust plume polygon (gradient: accent→transparent) + two swept
-    trajectory arcs as thick strokes, suggesting a rocket's path continuing off-mark
-  - Medical/aesthetics: a stylized cell or droplet — teardrop polygon + inner circle
-    offset upward, gradient fill from accent to deeper shade
-  - Trades: isometric cube corner — three rhombus shapes, each a different brand shade,
-    creating a 3D block illusion from flat geometry
-  - Tech/SaaS: three concentric partial arcs (like a signal/wifi) rotated 45°,
-    each arc a different opacity of the accent color, center dot filled solid
-  - Fitness: a dynamic forward-slash shape (thick, rounded ends) with a circular
-    weight disc at each tip — bold, kinetic, immediately readable
-  - Coffee: a side-profile cup trapezoid + steam as a triple sine-wave path,
-    cup filled with gradient from dark espresso to warm amber
+  Must use <linearGradient> or <radialGradient> in <defs>.
+  Must have <filter id="icon-glow"> with feGaussianBlur for premium feel.
 
-ICON MUST-HAVES (every single one):
-  ✓ Uses 2-3 colors from the brand palette — NOT just white/grey
-  ✓ Has visual weight — at least one filled shape, not just thin outlines
-  ✓ Contains a <linearGradient> or <radialGradient> inside <defs>
-  ✓ Contains a <filter id="glow"> with feGaussianBlur stdDeviation="3" for premium feel
-  ✓ Clearly readable and recognizable at 35px rendered height
-  ✓ Feels engineered and intentional — not clip-art, not a default icon set
+ICON MUST-HAVES (every single one, no exceptions):
+  ✓ Uses 2-3 brand palette colors — NOT just white/grey
+  ✓ Has visual weight — at least one filled shape, not just outlines
+  ✓ Contains a gradient inside <defs>
+  ✓ Contains a glow filter via feGaussianBlur
+  ✓ Clearly readable at 35px rendered height
+  ✓ Feels engineered and intentional — NOT clip-art or default icon set geometry
 
-THE WORDMARK (right side, ~220px wide):
+THE WORDMARK (right, ~220px wide):
 Choose ONE technique:
 
 TECHNIQUE 1 — SPLIT COLOR:
-  Brand name in ALL CAPS, font-size 26-28, font-weight 800, letter-spacing 4+.
-  One letter or syllable rendered in accent color, rest in white.
-  Tagline or descriptor below at font-size 9, letter-spacing 3, fill: rgba(255,255,255,0.5).
-  A 1px horizontal rule between name and tagline in accent color at 40% opacity.
+  Brand name ALL CAPS, font-size 26-28, font-weight 800, letter-spacing 4+.
+  One letter/syllable in accent color, rest white.
+  Tagline below at font-size 9, letter-spacing 3, fill rgba(255,255,255,0.5).
+  1px horizontal rule between name and tagline in accent color at 40% opacity.
 
 TECHNIQUE 2 — STACKED BADGE:
-  Brand name bold + large on top line.
-  Descriptor/industry text below in lighter weight, spaced out.
-  Thin accent-colored rectangle (2px tall, 30px wide) as a divider between lines.
+  Brand name bold + large on top.
+  Descriptor below in lighter weight, spaced out.
+  Thin 2px accent rectangle as a divider.
 
 TECHNIQUE 3 — OUTLINED CONTRAST:
-  Alternate letters: odd ones filled white, even ones stroke-only (fill:none, stroke:accent, stroke-width:1.5).
-  Creates editorial high-fashion feel. Bold font-weight 900.
+  Alternate letters: odd filled white, even stroke-only (fill:none, stroke:accent).
+  Bold font-weight 900. Editorial high-fashion feel.
 
 ──── B) COLOR PALETTE ────
-Define as CSS vars on :root. Pick unexpected, industry-right colors.
-Required vars:
-  --c-bg: main dark background (almost never pure black — use #050510, #0a0806, #0d0d0a etc)
-  --c-surface: card/panel background (slightly lighter than bg)
-  --c-accent: the electric pop color — this defines the brand personality
-  --c-accent2: secondary accent for gradients and hover states
+CSS vars on :root:
+  --c-bg: main dark background (NOT pure black — use #060408, #080610, #0a0806 etc)
+  --c-surface: card/panel bg (slightly lighter)
+  --c-accent: electric pop color — defines brand personality
+  --c-accent2: secondary for gradients/hover
   --c-text: near-white body text
   --c-text-muted: 50-60% opacity text
 
-Unexpected accent color ideas (do NOT default to safe choices):
-  Aerospace/tech: #E8FF00 acid yellow, #FF3CAC hot magenta, #00FFD1 electric teal
-  Medical/luxury: #C8A97E warm gold, #E8C4B8 blush rose, #A8D8A8 sage
-  Trades/industrial: #FF6B35 construction orange, #FFD23F safety yellow, #06FFA5 electric green
-  Fitness/sport: #39FF14 neon green, #FF006E neon pink, #FB5607 vivid orange
-  Coffee/food: #E8C547 warm amber, #FF8C42 citrus, #6BCB77 fresh herb
-  Finance/SaaS: #7C3AED deep violet, #2563EB royal blue, #059669 emerald
+Unexpected industry-right accents:
+  Nail/beauty: #E8B4C8 blush rose, #D4A853 warm champagne, #9B6B9B mauve
+  Aerospace: #E8FF00 acid yellow, #00FFD1 electric teal
+  Medical/luxury: #C8A97E warm gold, #E8C4B8 blush
+  Trades: #FF6B35 construction orange
+  Fitness: #39FF14 neon green
+  Coffee: #E8C547 warm amber
+  Tech: #7C3AED deep violet
 
 ──── C) TYPOGRAPHY ────
 Import 2 Google Fonts — one display, one body.
-Display font examples by industry:
-  Aerospace/tech: Orbitron, Rajdhani, Space Grotesk, Exo 2
-  Luxury/fashion: Cormorant Garamond, Playfair Display, DM Serif Display
-  Trades/industrial: Oswald, Barlow Condensed, Anton
-  Fitness: Bebas Neue, Black Han Sans, Russo One
-  Medical/wellness: Josefin Sans, Nunito, Lato
-  Creative/portfolio: Syne, Cabinet Grotesk, Clash Display
+Display: Cormorant Garamond / Playfair Display (luxury) | Orbitron / Rajdhani (tech) | Bebas Neue (fitness)
+Body: always pair with Inter, DM Sans, Manrope, or Plus Jakarta Sans
 
-Body font: always pair with a clean readable sans (Inter, DM Sans, Manrope, Plus Jakarta Sans)
-
-──── D) VISUAL TONE ────
-Apply consistently across every section:
-  - Dark backgrounds with subtle texture (CSS noise via SVG filter, or radial gradients)
-  - Sections separated by: angled clip-path dividers, or full-bleed accent strips, or gradient fades
-  - Cards: glass morphism (backdrop-filter:blur + semi-transparent border) OR dark solid with accent border-left
-  - All CTAs: accent color background, dark text, subtle box-shadow glow matching accent color
+──── D) SECTION ICONS ────
+Every service/feature card needs an SVG icon that:
+  - Is UNIQUE to that specific service (not a generic checkbox or circle)
+  - Uses the brand accent color as stroke or fill
+  - Is drawn from SVG primitives — no icon font classes
+  - Has consistent stroke-width (1.5-2px) and style across the set
+  - Is sized 40-48px rendered and clearly communicates the service at a glance
+  NAIL SALON example icons: droplet shape for gel, fine-tip brush for art,
+    foot outline for pedicure, extension nail for acrylics, leaf for treatments,
+    ring with flower for bridal
+  NEVER use: generic star, checkbox, circle-check, arrow, or abstract blob as service icon
 
 ════════════════════════════════════════════════════════════════════════
-STEP 2 — BUILD ALL 11 SECTIONS (ALL REQUIRED — ZERO EXCEPTIONS)
+STEP 2 — BUILD ALL 11 SECTIONS (ALL REQUIRED, ZERO EXCEPTIONS)
 ════════════════════════════════════════════════════════════════════════
 
 1. FIXED NAVBAR
-   - position:fixed, top:0, width:100%, z-index:1000
-   - Default: background:transparent, backdrop-filter:none
-   - SVG logo (use href="#brand-logo") on left
-   - All nav links in center/right — link to every section via #id anchors
-   - CTA button (accent color) on far right
-   - Mobile: hamburger icon toggles fullscreen nav overlay
+   position:fixed, top:0, width:100%, z-index:1000
+   Default: background:transparent, backdrop-filter:none
+   SVG logo left | nav links center/right | CTA button far right (accent bg)
+   Mobile: hamburger toggles fullscreen overlay
 
-2. HERO (100vh, full screen)
-   - <img> for hero background: position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0
-   - Dark overlay: position:absolute, inset:0, background:linear-gradient(to bottom, rgba(bg,0.7), rgba(bg,0.9)), z-index:1
-   - All hero content: position:relative, z-index:2
-   - Headline: font-size clamp(3rem, 8vw, 7rem), font-weight:900, line-height:1.0
-   - Subheading: font-size clamp(1rem, 2vw, 1.3rem), max-width:600px, opacity:0.8
-   - Two CTAs: primary (accent bg) + secondary (transparent border)
-   - Optional: decorative HUD elements, stat badges, or animated lines as brand flavor
+2. HERO (100vh)
+   <img> hero bg: position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0
+   Overlay: position:absolute, inset:0, z-index:1 (gradient from brand bg)
+   Content: position:relative, z-index:2
+   Headline: font-size clamp(3rem,8vw,7rem), font-weight:900, line-height:1.0
+   Subheading: font-size clamp(1rem,2vw,1.3rem), max-width:600px
+   Two CTAs: primary (accent bg) + secondary (transparent border)
 
 3. STATS BAR
-   - 4-6 stats with large numbers + labels
-   - Numbers animate from 0 to final value when scrolled into view (IntersectionObserver)
-   - Dark surface background, accent-colored numbers
+   4-6 stats, numbers animate 0→final on scroll (IntersectionObserver + data-count)
+   Dark surface bg, accent-colored numbers
 
 4. SERVICES / PRODUCTS (min 6 cards)
-   - Each card: SVG icon, title, 2-3 sentence description
-   - Cards use brand's glass/dark style
-   - Hover: accent border glow + slight translateY(-4px)
+   Each: UNIQUE SVG icon (brand-appropriate), title, 2-3 sentence description
+   Cards: glass morphism or dark solid with accent border-left
+   Hover: accent glow + translateY(-4px)
 
 5. ABOUT / STORY
-   - Two-column: text left, image right (or reversed)
-   - Compelling brand narrative — specific to the business, not generic filler
-   - Brand accent used for section label, pull quote, or highlight text
+   Two-column: text + image
+   Specific brand narrative — NOT generic filler text
 
 6. PORTFOLIO / PROCESS / FEATURED WORK
-   - If portfolio: image grid with overlay on hover
-   - If process: numbered steps with icons and descriptions
-   - If slider tabs exist here: ALL tab buttons must be wired up, each panel has real content
+   If tabs/filters exist: ALL buttons wired with data-tab/data-panel
+   Every panel has REAL brand-relevant content — never empty
+   Grid items have images (placehold.co)
 
 7. TEAM
-   - Grid of team cards: portrait <img>, name, title, 1-2 sentence bio
-   - Min 3 team members
+   Min 3 members: portrait <img>, name, title, 1-2 sentence bio
 
 8. TESTIMONIALS CAROUSEL
-   - Min 3 testimonials: quote text, star rating (★★★★★), client name, company/title
-   - Prev/next buttons: fully wired, wrap around
-   - Auto-advance every 5 seconds
-   - Dot indicators: clickable, update on slide change
+   Min 3: quote, ★★★★★ stars, client name, company/title
+   Prev/next fully wired + wrap around
+   Auto-advance 5s, clickable dots
 
 9. FAQ ACCORDION
-   - Min 6 questions
-   - EVERY answer: 2-4 complete sentences — specific to the business, no placeholders
-   - Click to open/close, smooth max-height transition
-   - Only one open at a time
-   - Accent color on open item's question text
+   Min 6 questions, EVERY answer 2-4 complete sentences
+   Smooth max-height, one open at a time
+   Accent color on open question
 
 10. CONTACT SECTION
-    - <section id="contact">
-    - <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST">
-    - Fields: Full Name (required), Email (required), Phone (optional), Message textarea (required)
-    - Hidden: <input type="hidden" name="_subject" value="New Enquiry">
-    - Hidden: <input type="hidden" name="_captcha" value="false">
-    - Inputs: dark bg, accent border on focus with box-shadow glow
-    - Submit: accent color bg, dark text, full width or large button
-    - On submit: hide form, show styled success message div
+    <section id="contact">
+    <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST">
+    Fields: Full Name*, Email*, Phone (optional), Message*
+    Hidden: _subject, _captcha=false
+    Dark inputs with accent focus glow (box-shadow)
+    Large accent submit button
+    Success div (id="contact-success", display:none) shown on submit
 
 11. FOOTER
-    - SVG logo (use href="#brand-logo")
-    - Navigation links organized in columns
-    - Social media icons (SVG paths — no external icon libraries)
-    - Copyright line
-    - Dark background, subtle top border in accent color at low opacity
+    SVG logo | nav columns | social SVG icons | copyright
+    Dark bg, accent top border at low opacity
+    MUST be present and fully built — never omit
 
 ════════════════════════════════════════════════════════════════════════
-STEP 3 — ALL JAVASCRIPT (WORKING, IN-FILE, NO EXCEPTIONS)
-Every single interaction must be coded and working in the output file.
+STEP 3 — ALL JAVASCRIPT WORKING IN THE OUTPUT FILE
 ════════════════════════════════════════════════════════════════════════
 
-── CUSTOM CURSOR (CRITICAL — must activate immediately on page load) ──
-Add <div id="cursor-dot"></div> as the VERY FIRST element inside <body>.
+── CUSTOM CURSOR (activates immediately on page load) ──
+<div id="cursor-dot"></div> as VERY FIRST element inside <body>.
 CSS:
   #cursor-dot {
-    position: fixed;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: var(--c-accent);
-    pointer-events: none;
-    z-index: 99999;
-    transform: translate(-50%, -50%);
-    transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
-    box-shadow: 0 0 12px var(--c-accent), 0 0 24px var(--c-accent);
+    position:fixed; width:12px; height:12px; border-radius:50%;
+    background:var(--c-accent); pointer-events:none; z-index:99999;
+    transform:translate(-50%,-50%);
+    transition:width 0.2s ease,height 0.2s ease,opacity 0.2s ease;
+    box-shadow:0 0 12px var(--c-accent),0 0 24px var(--c-accent);
+    left:50%; top:50%;
   }
-  #cursor-dot.large {
-    width: 36px;
-    height: 36px;
-    opacity: 0.6;
-  }
-JS (use this EXACT pattern — do not deviate):
-  (function() {
-    var dot = document.getElementById('cursor-dot');
-    if (!dot) return;
-    var mx = window.innerWidth / 2, my = window.innerHeight / 2;
-    var cx = mx, cy = my;
-    dot.style.left = cx + 'px';
-    dot.style.top = cy + 'px';
-    document.addEventListener('mousemove', function(e) { mx = e.clientX; my = e.clientY; });
-    document.addEventListener('mouseenter', function() { dot.style.opacity = '1'; });
-    document.addEventListener('mouseleave', function() { dot.style.opacity = '0'; });
-    document.querySelectorAll('a, button, [role="button"], input, textarea, [class*="tab"], [class*="btn"]').forEach(function(el) {
-      el.addEventListener('mouseenter', function() { dot.classList.add('large'); });
-      el.addEventListener('mouseleave', function() { dot.classList.remove('large'); });
+  #cursor-dot.large { width:36px; height:36px; opacity:0.6; }
+JS — use this EXACT pattern:
+  (function(){
+    var dot=document.getElementById('cursor-dot');
+    if(!dot)return;
+    var mx=window.innerWidth/2,my=window.innerHeight/2,cx=mx,cy=my;
+    dot.style.left=cx+'px'; dot.style.top=cy+'px';
+    document.addEventListener('mousemove',function(e){mx=e.clientX;my=e.clientY;});
+    document.addEventListener('mouseleave',function(){dot.style.opacity='0';});
+    document.addEventListener('mouseenter',function(){dot.style.opacity='1';});
+    document.querySelectorAll('a,button,[role="button"],input,textarea,[data-tab],[class*="btn"]').forEach(function(el){
+      el.addEventListener('mouseenter',function(){dot.classList.add('large');});
+      el.addEventListener('mouseleave',function(){dot.classList.remove('large');});
     });
-    function loop() {
-      cx += (mx - cx) * 0.12;
-      cy += (my - cy) * 0.12;
-      dot.style.left = cx + 'px';
-      dot.style.top = cy + 'px';
+    (function loop(){
+      cx+=(mx-cx)*0.12; cy+=(my-cy)*0.12;
+      dot.style.left=cx+'px'; dot.style.top=cy+'px';
       requestAnimationFrame(loop);
-    }
-    loop();
+    })();
   })();
-NEVER use cursor:none anywhere. The system cursor stays visible. The dot is an ADDITION.
+NEVER use cursor:none anywhere. System cursor always visible underneath.
 
-── NAVBAR SCROLL ──
-  (function() {
-    var nav = document.querySelector('nav, header, .navbar, #navbar');
-    if (!nav) return;
-    function updateNav() {
-      if (window.scrollY > 80) {
-        nav.style.background = 'rgba(5,5,16,0.97)';
-        nav.style.backdropFilter = 'blur(20px)';
-        nav.style.webkitBackdropFilter = 'blur(20px)';
-        nav.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+── NAVBAR SCROLL (transparent → solid) ──
+  (function(){
+    var nav=document.querySelector('nav,header,.navbar,#navbar');
+    if(!nav)return;
+    function u(){
+      if(window.scrollY>80){
+        nav.style.background='rgba(6,4,8,0.96)';
+        nav.style.backdropFilter='blur(20px)';
+        nav.style.webkitBackdropFilter='blur(20px)';
+        nav.style.borderBottom='1px solid rgba(255,255,255,0.07)';
       } else {
-        nav.style.background = 'transparent';
-        nav.style.backdropFilter = 'none';
-        nav.style.webkitBackdropFilter = 'none';
-        nav.style.borderBottom = 'none';
+        nav.style.background='transparent';
+        nav.style.backdropFilter='none';
+        nav.style.webkitBackdropFilter='none';
+        nav.style.borderBottom='none';
       }
     }
-    window.addEventListener('scroll', updateNav, { passive: true });
-    updateNav();
+    window.addEventListener('scroll',u,{passive:true});
+    u();
   })();
 
 ── SMOOTH SCROLL ──
-  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
-    a.addEventListener('click', function(e) {
-      var target = document.querySelector(this.getAttribute('href'));
-      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){
+    a.addEventListener('click',function(e){
+      var t=document.querySelector(this.getAttribute('href'));
+      if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}
     });
   });
 
 ── MOBILE HAMBURGER ──
-  (function() {
-    var btn = document.querySelector('.hamburger, .mobile-toggle, #mobile-toggle, [data-mobile-toggle]');
-    var menu = document.querySelector('.mobile-menu, .nav-overlay, #mobile-menu, [data-mobile-menu]');
-    if (!btn || !menu) return;
-    btn.addEventListener('click', function() {
-      var open = menu.style.display === 'flex' || menu.classList.contains('open');
-      if (open) { menu.style.display = 'none'; menu.classList.remove('open'); btn.classList.remove('active'); }
-      else { menu.style.display = 'flex'; menu.classList.add('open'); btn.classList.add('active'); }
+  (function(){
+    var btn=document.querySelector('.hamburger,.mobile-toggle,#mobile-toggle,[data-mobile-toggle]');
+    var menu=document.querySelector('.mobile-menu,.nav-overlay,#mobile-menu,[data-mobile-menu]');
+    if(!btn||!menu)return;
+    btn.addEventListener('click',function(){
+      var open=menu.classList.contains('open');
+      menu.style.display=open?'none':'flex';
+      menu.classList.toggle('open',!open);
+      btn.classList.toggle('active',!open);
     });
   })();
 
 ── SCROLL REVEALS ──
-CSS (in <style>):
-  .reveal { opacity: 1; transform: none; transition: opacity 0.7s ease, transform 0.7s ease; }
-  .js-loaded .reveal { opacity: 0; transform: translateY(28px); }
-  .js-loaded .reveal.visible { opacity: 1; transform: translateY(0); }
+CSS:
+  .reveal{opacity:1;transform:none;transition:opacity 0.7s ease,transform 0.7s ease;}
+  .js-loaded .reveal{opacity:0;transform:translateY(28px);}
+  .js-loaded .reveal.visible{opacity:1;transform:translateY(0);}
 JS:
-  (function() {
+  (function(){
     document.body.classList.add('js-loaded');
-    var els = document.querySelectorAll('.reveal');
-    if (!els.length) return;
-    var io = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
-    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-    els.forEach(function(el) { io.observe(el); });
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target);}});
+    },{threshold:0.08,rootMargin:'0px 0px -40px 0px'});
+    document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
   })();
-Apply class="reveal" to: section headings, paragraph blocks, card grids, stat items, team cards,
-  about content, portfolio items, FAQ container, contact form, footer content.
-ALL sections must have .reveal on their primary content children.
+Apply class="reveal" to: ALL section headings, paragraph blocks, card grids,
+  stat items, team cards, about content, portfolio items, FAQ container,
+  contact form, footer columns. EVERY section must have reveal on primary children.
 
 ── ANIMATED COUNTERS ──
-  (function() {
-    var counters = document.querySelectorAll('[data-count]');
-    if (!counters.length) return;
-    var io = new IntersectionObserver(function(entries) {
-      entries.forEach(function(e) {
-        if (!e.isIntersecting) return;
-        var el = e.target, target = +el.dataset.count, suffix = el.dataset.suffix || '', start = 0;
-        var step = target / 60;
-        var timer = setInterval(function() {
-          start += step;
-          if (start >= target) { start = target; clearInterval(timer); }
-          el.textContent = Math.floor(start).toLocaleString() + suffix;
-        }, 16);
+  (function(){
+    var io=new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(!e.isIntersecting)return;
+        var el=e.target,target=+el.dataset.count,suffix=el.dataset.suffix||'',val=0,step=target/60;
+        var t=setInterval(function(){val+=step;if(val>=target){val=target;clearInterval(t);}el.textContent=Math.floor(val).toLocaleString()+suffix;},16);
         io.unobserve(el);
       });
-    }, { threshold: 0.5 });
-    counters.forEach(function(el) { io.observe(el); });
+    },{threshold:0.5});
+    document.querySelectorAll('[data-count]').forEach(function(el){io.observe(el);});
   })();
-Usage: <span data-count="420" data-suffix="km">0</span>
+Usage: <span data-count="2000" data-suffix="+">0</span>
 
 ── FAQ ACCORDION ──
-  (function() {
-    var items = document.querySelectorAll('.faq-item, [data-faq]');
-    items.forEach(function(item) {
-      var q = item.querySelector('.faq-question, [data-faq-q]');
-      var a = item.querySelector('.faq-answer, [data-faq-a]');
-      if (!q || !a) return;
-      a.style.maxHeight = '0';
-      a.style.overflow = 'hidden';
-      a.style.transition = 'max-height 0.4s ease, padding 0.4s ease';
-      q.style.cursor = 'pointer';
-      q.addEventListener('click', function() {
-        var isOpen = item.classList.contains('open');
-        items.forEach(function(i) {
+  (function(){
+    document.querySelectorAll('.faq-item,[data-faq]').forEach(function(item){
+      var q=item.querySelector('.faq-question,[data-faq-q]');
+      var a=item.querySelector('.faq-answer,[data-faq-a]');
+      if(!q||!a)return;
+      a.style.maxHeight='0';a.style.overflow='hidden';
+      a.style.transition='max-height 0.4s ease,padding 0.4s ease';
+      q.style.cursor='pointer';
+      q.addEventListener('click',function(){
+        var open=item.classList.contains('open');
+        document.querySelectorAll('.faq-item,[data-faq]').forEach(function(i){
           i.classList.remove('open');
-          var ia = i.querySelector('.faq-answer, [data-faq-a]');
-          if (ia) ia.style.maxHeight = '0';
+          var ia=i.querySelector('.faq-answer,[data-faq-a]');
+          if(ia)ia.style.maxHeight='0';
         });
-        if (!isOpen) {
-          item.classList.add('open');
-          a.style.maxHeight = a.scrollHeight + 32 + 'px';
-        }
+        if(!open){item.classList.add('open');a.style.maxHeight=a.scrollHeight+32+'px';}
       });
     });
   })();
 
 ── TABS / FILTER BUTTONS ──
-  (function() {
-    var tabs = document.querySelectorAll('[data-tab]');
-    var panels = document.querySelectorAll('[data-panel]');
-    if (!tabs.length) return;
-    function showTab(name) {
-      tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === name); });
-      panels.forEach(function(p) { p.style.display = p.dataset.panel === name ? 'block' : 'none'; });
+  (function(){
+    var tabs=document.querySelectorAll('[data-tab]');
+    var panels=document.querySelectorAll('[data-panel]');
+    if(!tabs.length)return;
+    function show(name){
+      tabs.forEach(function(t){t.classList.toggle('active',t.dataset.tab===name);});
+      panels.forEach(function(p){p.style.display=p.dataset.panel===name?'block':'none';});
     }
-    tabs.forEach(function(t) { t.addEventListener('click', function() { showTab(t.dataset.tab); }); });
-    showTab(tabs[0].dataset.tab);
+    tabs.forEach(function(t){t.addEventListener('click',function(){show(t.dataset.tab);});});
+    show(tabs[0].dataset.tab);
   })();
-CRITICAL: Every [data-tab] button must have a matching [data-panel] with the same name value.
-Every panel must contain real, brand-relevant content — never empty or placeholder.
+CRITICAL: Every [data-tab] button MUST have a matching [data-panel] with same value.
+Every panel MUST contain real brand-relevant content — NEVER empty or placeholder.
 
 ── TESTIMONIALS CAROUSEL ──
-  (function() {
-    var slides = document.querySelectorAll('.testimonial-slide, [data-slide]');
-    var dots = document.querySelectorAll('.carousel-dot, [data-dot]');
-    var prev = document.querySelector('.carousel-prev, [data-prev]');
-    var next = document.querySelector('.carousel-next, [data-next]');
-    if (!slides.length) return;
-    var current = 0;
-    function show(n) {
-      current = ((n % slides.length) + slides.length) % slides.length;
-      slides.forEach(function(s, i) { s.style.display = i === current ? 'block' : 'none'; });
-      dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
+  (function(){
+    var slides=document.querySelectorAll('.testimonial-slide,[data-slide]');
+    var dots=document.querySelectorAll('.carousel-dot,[data-dot]');
+    var prev=document.querySelector('.carousel-prev,[data-prev]');
+    var next=document.querySelector('.carousel-next,[data-next]');
+    if(!slides.length)return;
+    var cur=0;
+    function show(n){
+      cur=((n%slides.length)+slides.length)%slides.length;
+      slides.forEach(function(s,i){s.style.display=i===cur?'block':'none';});
+      dots.forEach(function(d,i){d.classList.toggle('active',i===cur);});
     }
-    if (prev) prev.addEventListener('click', function() { show(current - 1); });
-    if (next) next.addEventListener('click', function() { show(current + 1); });
-    dots.forEach(function(d, i) { d.addEventListener('click', function() { show(i); }); });
+    if(prev)prev.addEventListener('click',function(){show(cur-1);});
+    if(next)next.addEventListener('click',function(){show(cur+1);});
+    dots.forEach(function(d,i){d.addEventListener('click',function(){show(i);});});
     show(0);
-    setInterval(function() { show(current + 1); }, 5000);
+    setInterval(function(){show(cur+1);},5000);
   })();
 
 ── CONTACT FORM ──
-  (function() {
-    var form = document.getElementById('contact-form');
-    var success = document.getElementById('contact-success');
-    if (!form) return;
-    form.addEventListener('submit', function(e) {
-      var name = form.querySelector('[name="name"]');
-      var email = form.querySelector('[name="email"]');
-      var message = form.querySelector('[name="message"]');
-      if (!name || !name.value.trim()) { e.preventDefault(); name && name.focus(); return; }
-      if (!email || !email.value.trim()) { e.preventDefault(); email && email.focus(); return; }
-      if (!message || !message.value.trim()) { e.preventDefault(); message && message.focus(); return; }
-      if (success) {
-        setTimeout(function() { form.style.display = 'none'; success.style.display = 'block'; }, 800);
-      }
+  (function(){
+    var form=document.getElementById('contact-form');
+    var success=document.getElementById('contact-success');
+    if(!form)return;
+    form.addEventListener('submit',function(e){
+      var n=form.querySelector('[name="name"]');
+      var em=form.querySelector('[name="email"]');
+      var msg=form.querySelector('[name="message"]');
+      if(!n||!n.value.trim()){e.preventDefault();if(n)n.focus();return;}
+      if(!em||!em.value.trim()){e.preventDefault();if(em)em.focus();return;}
+      if(!msg||!msg.value.trim()){e.preventDefault();if(msg)msg.focus();return;}
+      if(success){setTimeout(function(){form.style.display='none';success.style.display='block';},800);}
     });
   })();
 
 ════════════════════════════════════════════════════════════════════════
-STEP 4 — IMAGE PLACEHOLDERS
+STEP 4 — IMAGES
 ════════════════════════════════════════════════════════════════════════
-Every image uses <img src="https://placehold.co/WIDTHxHEIGHT" ...>
-Sizes: hero 1920x1080, team portraits 400x400, service/work cards 600x400, about 800x600
-These will be replaced by AI-generated images in a later pass.
+Every image: <img src="https://placehold.co/WIDTHxHEIGHT" ...>
+Sizes: hero 1920x1080, team 400x400, cards 600x400, about 800x600
+These get replaced by AI-generated images in a later pass.
 
 ════════════════════════════════════════════════════════════════════════
-STEP 5 — TECHNICAL REQUIREMENTS
+STEP 5 — TECHNICAL
 ════════════════════════════════════════════════════════════════════════
-- Single HTML file. All CSS in <style>. All JS in one <script> at end of body.
-- Google Fonts via @import url() in <style>
+- Single HTML file. CSS in <style>. JS in one <script> at end of body.
+- Google Fonts via @import in <style>
 - Minimum 1500 lines
-- All section IDs match navbar anchor links exactly
-- No external JS libraries — vanilla JS only
-- Pixel perfect on mobile (375px) and desktop (1440px)`;
+- All section IDs match navbar anchors exactly
+- No external JS libraries
+- Pixel perfect 375px mobile + 1440px desktop
+- FOOTER IS MANDATORY — must be the last section before </body>`;
 
 const HTML_OUTPUT_RULES = `
 
@@ -451,53 +389,25 @@ ABSOLUTE OUTPUT RULES:
 - Raw HTML only`;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASS 2 — SURGICAL JS + DATA-SLOT INJECTION PROMPT
-// Returns ONLY a JSON object, never rewrites HTML
+// PASS 2 — SURGICAL AUDIT PROMPT
+// Returns JSON only — never rewrites HTML
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PASS2_SYSTEM_PROMPT = `You are a precise code auditor and JavaScript specialist.
-You receive an HTML site and return ONLY a JSON object — never HTML, never markdown.
+const PASS2_SYSTEM_PROMPT = `You are a precise code auditor. You receive an HTML site summary and return ONLY a raw JSON object.
+No markdown. No backticks. No explanation. Raw JSON only.
 
-Your job has two parts:
-1. Audit the site's interactive elements and return any missing/broken JS as self-contained fix scripts
-2. Audit every <img> tag and return data-slot assignments
-
-Return ONLY this JSON shape (raw, no markdown, no backticks):
+Return this exact shape:
 {
   "fixes": [
-    {
-      "id": "short-fix-id",
-      "description": "what this fixes",
-      "script": "...complete self-contained JS as a string, wrapped in IIFE..."
-    }
+    { "id": "fix-id", "description": "what this fixes", "script": "complete IIFE JS string" }
   ],
   "slots": [
-    {
-      "src": "exact src attribute value of the img tag",
-      "slot": "descriptive-slot-id-like-hero-bg-rocket-launch-night"
-    }
+    { "src": "exact src value from html", "slot": "descriptive-slot-id" }
   ]
 }
 
-AUDIT RULES:
-- Check cursor: does #cursor-dot exist and have a mousemove loop? If missing or broken, add fix.
-- Check navbar: does it go transparent→solid on scroll? If missing, add fix.
-- Check FAQ: do .faq-item clicks open/close answers? If broken, add fix.
-- Check tabs: do [data-tab] buttons show/hide [data-panel] content? If broken, add fix.
-- Check carousel: do prev/next/dots work? If broken, add fix.
-- Check counters: do [data-count] elements animate? If broken, add fix.
-- Check scroll reveals: do .reveal elements get .visible class? If broken, add fix.
-- Check contact form: does #contact-form exist with validation? If broken, add fix.
-- Check mobile menu: does hamburger toggle work? If broken, add fix.
-
-SLOT RULES:
-- Every <img> tag gets a slot entry
-- src must be the EXACT src value from the HTML (for matching)
-- slot must be a descriptive hyphenated id specific to that image's purpose
-- Examples: "hero-bg-aerospace-rocket-launch-night-exhaust",
-  "team-portrait-ceo-professional-headshot", "service-card-satellite-deployment-orbit"
-
-Output ONLY the raw JSON object. No explanation. No markdown. No HTML.`;
+AUDIT: Only add fixes for things genuinely missing based on the boolean flags.
+SLOTS: One entry per unique img src. Make slot ids highly descriptive and specific.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
@@ -516,11 +426,7 @@ function cleanHtml(html) {
 
 function safeParseJson(text) {
   let cleaned = text.trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```\s*$/i, '')
-    .trim();
-  // Extract JSON object if wrapped in other text
+    .replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
   const objStart = cleaned.indexOf('{');
   const objEnd = cleaned.lastIndexOf('}');
   if (objStart !== -1 && objEnd !== -1) cleaned = cleaned.substring(objStart, objEnd + 1);
@@ -539,38 +445,34 @@ function extractContactEmail(userRequest) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SURGICAL PASS 2 INJECTION
-// Takes the JSON from Pass 2 and applies fixes + data-slots to Pass 1 HTML
-// Never touches HTML content — only injects scripts and attributes
+// SURGICAL PASS 2 APPLICATION
 // ─────────────────────────────────────────────────────────────────────────────
 
 function applyPass2(html, pass2Json) {
   let result = html;
 
-  // 1. Inject fix scripts before </body>
   if (pass2Json.fixes && pass2Json.fixes.length > 0) {
-    const scriptBlocks = pass2Json.fixes.map(fix => {
-      console.log(`  Injecting fix: ${fix.id} — ${fix.description}`);
-      return `\n<script data-fix="${fix.id}">\n/* Fix: ${fix.description} */\n${fix.script}\n</scr` + `ipt>`;
+    const scripts = pass2Json.fixes.map(fix => {
+      console.log(`  Fix: ${fix.id} — ${fix.description}`);
+      return `\n<script data-fix="${fix.id}">\n${fix.script}\n</scr` + `ipt>`;
     }).join('\n');
-    result = result.replace('</body>', scriptBlocks + '\n</body>');
+    result = result.replace('</body>', scripts + '\n</body>');
   }
 
-  // 2. Apply data-slot attributes to img tags
   if (pass2Json.slots && pass2Json.slots.length > 0) {
-    let slotCount = 0;
+    let count = 0;
     pass2Json.slots.forEach(function(slot) {
-      const escapedSrc = slot.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Match img tags with this src, add data-slot if not already present
-      const imgPattern = new RegExp(`(<img[^>]*src="${escapedSrc}"[^>]*)(>)`, 'gi');
-      const before = result.length;
-      result = result.replace(imgPattern, function(match, imgOpen, close) {
-        if (match.includes('data-slot')) return match; // already has slot
-        return imgOpen + ` data-slot="${slot.slot}"` + close;
-      });
-      if (result.length !== before || result.includes(`data-slot="${slot.slot}"`)) slotCount++;
+      const esc = slot.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      result = result.replace(
+        new RegExp(`(<img[^>]*src="${esc}"[^>]*)(>)`, 'gi'),
+        function(match, open, close) {
+          if (match.includes('data-slot')) return match;
+          count++;
+          return open + ` data-slot="${slot.slot}"` + close;
+        }
+      );
     });
-    console.log(`  Applied ${slotCount} data-slot attributes`);
+    console.log(`  Applied ${count} data-slot attributes`);
   }
 
   return result;
@@ -578,51 +480,53 @@ function applyPass2(html, pass2Json) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTACT FORM SAFETY NET
-// Hard fallback if Pass 1 somehow dropped the contact section
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ensureContactSection(html) {
   const hasForm = /<form[^>]*id=["']contact-form["']/i.test(html) ||
-                  /<form[^>]*action[^>]*(CONTACT_FORM_ENDPOINT|formsubmit)/i.test(html);
-  if (hasForm) return html;
+                  /CONTACT_FORM_ENDPOINT/i.test(html) ||
+                  /formsubmit\.co/i.test(html);
+  if (hasForm) {
+    console.log('  Contact form present — OK');
+    return html;
+  }
 
-  console.log('  Contact form missing — injecting fallback');
-
+  console.log('  Contact form MISSING — injecting fallback');
   const section = `
-<section id="contact" style="padding:120px 0;background:var(--c-bg,#050510);">
+<section id="contact" style="padding:120px 0;background:var(--c-bg,#060408);">
   <div style="max-width:680px;margin:0 auto;padding:0 24px;">
     <div class="reveal" style="text-align:center;margin-bottom:56px;">
-      <p style="color:var(--c-accent,#00FFD1);font-size:0.8rem;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;">Contact</p>
+      <p style="color:var(--c-accent,#D4A853);font-size:0.75rem;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;">Contact</p>
       <h2 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:800;color:#fff;margin:0 0 20px;">Get In Touch</h2>
-      <p style="color:var(--c-text-muted,rgba(255,255,255,0.55));font-size:1.05rem;line-height:1.7;">Ready to start? Send us a message and we'll respond within 24 hours.</p>
+      <p style="color:var(--c-text-muted,rgba(255,255,255,0.55));font-size:1.05rem;line-height:1.7;">Send us a message and we'll get back to you within 24 hours.</p>
     </div>
     <div id="contact-success" style="display:none;text-align:center;padding:56px 32px;background:rgba(255,255,255,0.04);border-radius:16px;border:1px solid rgba(255,255,255,0.1);">
-      <div style="font-size:2.5rem;margin-bottom:16px;">✓</div>
+      <p style="color:var(--c-accent,#D4A853);font-size:2rem;margin-bottom:12px;">✓</p>
       <p style="color:#fff;font-size:1.2rem;font-weight:700;margin-bottom:8px;">Message Sent</p>
       <p style="color:var(--c-text-muted,rgba(255,255,255,0.55));">We'll be in touch shortly.</p>
     </div>
-    <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST" class="reveal" style="display:flex;flex-direction:column;gap:22px;">
+    <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST" class="reveal" style="display:flex;flex-direction:column;gap:20px;">
       <input type="hidden" name="_subject" value="New Enquiry">
       <input type="hidden" name="_captcha" value="false">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
         <div>
-          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Full Name *</label>
-          <input type="text" name="name" required placeholder="Your name" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Full Name *</label>
+          <input type="text" name="name" required placeholder="Your name" style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#D4A853)';this.style.boxShadow='0 0 0 3px rgba(212,168,83,0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
         </div>
         <div>
-          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Email *</label>
-          <input type="email" name="email" required placeholder="you@email.com" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Email *</label>
+          <input type="email" name="email" required placeholder="you@email.com" style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#D4A853)';this.style.boxShadow='0 0 0 3px rgba(212,168,83,0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
         </div>
       </div>
       <div>
-        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Phone (optional)</label>
-        <input type="tel" name="phone" placeholder="+1 (555) 000-0000" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Phone (optional)</label>
+        <input type="tel" name="phone" placeholder="+1 (555) 000-0000" style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#D4A853)';this.style.boxShadow='0 0 0 3px rgba(212,168,83,0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
       </div>
       <div>
-        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Message *</label>
-        <textarea name="message" required rows="6" placeholder="Tell us about your project..." style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'"></textarea>
+        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">Message *</label>
+        <textarea name="message" required rows="6" placeholder="Tell us about your project..." style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:1rem;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#D4A853)';this.style.boxShadow='0 0 0 3px rgba(212,168,83,0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'"></textarea>
       </div>
-      <button type="submit" style="padding:18px 48px;background:var(--c-accent,#00FFD1);color:#050510;font-size:0.9rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;border:none;border-radius:10px;cursor:pointer;transition:opacity 0.3s,transform 0.2s;align-self:stretch;" onmouseover="this.style.opacity='0.85';this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'">Send Message</button>
+      <button type="submit" style="padding:18px 48px;background:var(--c-accent,#D4A853);color:#060408;font-size:0.85rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;border:none;border-radius:8px;cursor:pointer;transition:opacity 0.3s,transform 0.2s;" onmouseover="this.style.opacity='0.85';this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'">Send Message</button>
     </form>
   </div>
 </section>`;
@@ -632,6 +536,65 @@ function ensureContactSection(html) {
   } else {
     html = html.replace('</body>', section + '\n</body>');
   }
+  return html;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FOOTER SAFETY NET
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ensureFooter(html) {
+  const hasFooter = /<footer/i.test(html);
+  if (hasFooter) {
+    console.log('  Footer present — OK');
+    return html;
+  }
+
+  console.log('  Footer MISSING — injecting fallback');
+  const footer = `
+<footer style="background:var(--c-bg,#060408);border-top:1px solid rgba(255,255,255,0.06);padding:60px 0 32px;">
+  <div style="max-width:1200px;margin:0 auto;padding:0 24px;">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px;">
+      <div>
+        <svg style="width:180px;height:45px;display:block;margin-bottom:20px;"><use href="#brand-logo"/></svg>
+        <p style="color:var(--c-text-muted,rgba(255,255,255,0.5));font-size:0.9rem;line-height:1.7;max-width:280px;">Crafting exceptional experiences with passion and precision.</p>
+      </div>
+      <div>
+        <p style="color:#fff;font-size:0.75rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;">Services</p>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">
+          <li><a href="#services" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">Our Services</a></li>
+          <li><a href="#portfolio" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">Portfolio</a></li>
+          <li><a href="#team" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">Our Team</a></li>
+        </ul>
+      </div>
+      <div>
+        <p style="color:#fff;font-size:0.75rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;">Company</p>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px;">
+          <li><a href="#about" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">About</a></li>
+          <li><a href="#faq" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">FAQ</a></li>
+          <li><a href="#contact" style="color:var(--c-text-muted,rgba(255,255,255,0.5));text-decoration:none;font-size:0.9rem;transition:color 0.2s;" onmouseover="this.style.color='var(--c-accent,#D4A853)'" onmouseout="this.style.color='rgba(255,255,255,0.5)'">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <p style="color:#fff;font-size:0.75rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;">Follow</p>
+        <div style="display:flex;gap:16px;">
+          <a href="#" style="width:40px;height:40px;border:1px solid rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='var(--c-accent,#D4A853)';this.style.background='rgba(212,168,83,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='transparent'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="#" style="width:40px;height:40px;border:1px solid rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:border-color 0.2s,background 0.2s;" onmouseover="this.style.borderColor='var(--c-accent,#D4A853)';this.style.background='rgba(212,168,83,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';this.style.background='transparent'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <p style="color:var(--c-text-muted,rgba(255,255,255,0.4));font-size:0.8rem;margin:0;">© 2026 All rights reserved.</p>
+      <p style="color:var(--c-text-muted,rgba(255,255,255,0.4));font-size:0.8rem;margin:0;">Privacy Policy · Terms of Service</p>
+    </div>
+  </div>
+</footer>`;
+
+  html = html.replace('</body>', footer + '\n</body>');
   return html;
 }
 
@@ -650,7 +613,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
     console.log(`  Compressed: ${Math.round(inputBuffer.length/1024)}kb → ${Math.round(outputBuffer.length/1024)}kb`);
     return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
   } catch (err) {
-    console.error('Compression error:', err.message);
+    console.error('  Compression error:', err.message);
     return base64DataUrl;
   }
 }
@@ -740,8 +703,7 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
     const data = await response.json();
     if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
     const raw = '[' + data.content[0].text.trim();
-    let cleaned = raw.replace(/^```json\s*/i,'').replace(/```\s*$/i,'').trim();
-    return JSON.parse(cleaned);
+    return JSON.parse(raw.replace(/^```json\s*/i,'').replace(/```\s*$/i,'').trim());
   } finally {
     clearTimeout(timeout);
   }
@@ -753,6 +715,7 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
 
 function detectIndustry(text) {
   text = text.toLowerCase();
+  if (text.includes('nail') || text.includes('beauty bar') || text.includes('manicure') || text.includes('pedicure')) return 'nail_salon';
   if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
   if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) return 'fashion';
   if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) return 'restaurant';
@@ -777,7 +740,7 @@ function detectIndustry(text) {
 
 function getImageCap(industry) {
   const caps = {
-    ecommerce: 16, fashion: 14, skincare: 12, restaurant: 12,
+    nail_salon: 14, ecommerce: 16, fashion: 14, skincare: 12, restaurant: 12,
     jewelry: 12, hospitality: 12, aesthetics_clinic: 12, wellness: 10,
     fitness: 10, real_estate: 10, photography: 10, coffee: 10,
     trades: 10, aerospace: 10, music: 8, robotics: 8, portfolio: 8,
@@ -787,7 +750,8 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — Imagen 3
+// IMAGE GENERATION — Imagen 4 (imagen-4.0-generate-001)
+// Confirmed working endpoint as of May 2026
 // ─────────────────────────────────────────────────────────────────────────────
 
 function normalizeAspectRatio(ar) {
@@ -812,9 +776,12 @@ async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts =
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!apiKey) { console.error('GOOGLE_API_KEY not set'); return null; }
+    if (!apiKey) { console.error('  GOOGLE_API_KEY not set'); return null; }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+    // Imagen 4 — confirmed working model name May 2026
+    const model = 'imagen-4.0-generate-001';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
+
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -831,7 +798,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
 
     const data = await response.json();
     if (!response.ok) {
-      console.error('  Image API error:', JSON.stringify(data).substring(0, 200));
+      console.error(`  Image API error [${model}]:`, JSON.stringify(data).substring(0, 250));
       return null;
     }
 
@@ -857,7 +824,6 @@ function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
-  // data-slot tagged imgs
   const ds1 = /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi;
   const ds2 = /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi;
   let m;
@@ -868,7 +834,6 @@ function extractImageSlots(html) {
     if (!seen.has(m[2])) { seen.add(m[2]); slots.push({ id: m[2], src: m[1], type: 'data-slot' }); }
   }
 
-  // Placeholder srcs
   const placeholders = [
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
     /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
@@ -885,14 +850,12 @@ function extractImageSlots(html) {
     }
   }
 
-  // CSS background-image
   const bgPat = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
   while ((m = bgPat.exec(html)) !== null) {
     if (!seen.has(m[1]) && !m[1].startsWith('data:')) {
       seen.add(m[1]);
-      const ctx = html.substring(Math.max(0, m.index - 200), m.index).toLowerCase();
-      const isHero = ctx.includes('hero') || ctx.includes('banner');
-      slots.push({ id: isHero ? 'hero-background-fullscreen' : `bg-${slots.length}`, src: m[1], type: 'background' });
+      const ctx = html.substring(Math.max(0,m.index-200),m.index).toLowerCase();
+      slots.push({ id: ctx.includes('hero')||ctx.includes('banner') ? 'hero-background-fullscreen' : `bg-${slots.length}`, src: m[1], type: 'background' });
     }
   }
 
@@ -916,28 +879,25 @@ async function injectBrandedImages(html, userRequest, jobId) {
   const slots = rawSlots.slice(0, cap);
   console.log(`[${jobId}] Processing ${slots.length} slots`);
 
-  // Generate prompts
   let promptData = [];
   try {
-    const promptReq = `Brand context: ${userRequest.substring(0, 800)}
+    const req = `Brand context: ${userRequest.substring(0,800)}
 Industry: ${industry}
-Write a photorealistic image generation prompt for each slot.
-Each prompt must: match brand aesthetic, be specific to the slot's purpose, end with ", no text, no watermarks, no logos, professional photography"
+Write a photorealistic Imagen 4 prompt for each slot. Match brand aesthetic exactly. End each with ", no text, no watermarks, no logos, professional photography"
 Slots: ${slots.map((s,i) => `${i}. "${s.id}"`).join('\n')}
 Return JSON array: [{"index":0,"prompt":"...","aspect_ratio":"16:9"},...]
-aspect_ratio: "16:9" heroes/banners, "1:1" portraits/cards, "4:3" lifestyle, "3:4" portrait`;
-    promptData = await callClaudeJson(promptReq, 3000);
-    console.log(`[${jobId}] Generated ${promptData.length} image prompts`);
+aspect_ratio: "16:9" heroes/banners, "1:1" portraits/square, "4:3" lifestyle, "3:4" portrait`;
+    promptData = await callClaudeJson(req, 3000);
+    console.log(`[${jobId}] Generated ${promptData.length} prompts`);
   } catch (err) {
     console.error(`[${jobId}] Prompt gen failed, using fallback`);
-    promptData = slots.map((s, i) => ({
+    promptData = slots.map((s,i) => ({
       index: i,
       prompt: `Premium ${industry} brand photography, cinematic lighting, no text, no watermarks, professional photography`,
-      aspect_ratio: s.id.includes('hero') || s.id.includes('background') ? '16:9' : '1:1'
+      aspect_ratio: s.id.includes('hero')||s.id.includes('background') ? '16:9' : '1:1'
     }));
   }
 
-  // Generate all images in parallel
   const results = await Promise.all(slots.map(async (slot, i) => {
     const entry = promptData[i] || promptData.find(p => p.index === i);
     if (!entry) return { ...slot, img: null };
@@ -950,20 +910,19 @@ aspect_ratio: "16:9" heroes/banners, "1:1" portraits/cards, "4:3" lifestyle, "3:
   const ok = results.filter(r => r.img).length;
   console.log(`[${jobId}] Images: ${ok}/${slots.length} successful`);
 
-  // Inject images
   for (const r of results) {
     if (!r.img) continue;
     try {
       if (r.type === 'data-slot') {
-        const eid = r.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'gi'), `$1${r.img}$2`);
-        html = html.replace(new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'gi'), `$1${r.img}$2`);
+        const eid = r.id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        html = html.replace(new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`,'gi'), `$1${r.img}$2`);
+        html = html.replace(new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`,'gi'), `$1${r.img}$2`);
       } else if (r.type === 'background') {
-        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(esc, 'g'), r.img);
+        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        html = html.replace(new RegExp(esc,'g'), r.img);
       } else {
-        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(`src="${esc}"`, 'gi'), `src="${r.img}"`);
+        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        html = html.replace(new RegExp(`src="${esc}"`,'gi'), `src="${r.img}"`);
       }
     } catch (e) {
       console.error(`[${jobId}] Inject error ${r.id}: ${e.message}`);
@@ -988,9 +947,8 @@ app.post('/build-async', async (req, res) => {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`[${jobId}] Job started`);
   console.log(`[${jobId}] Request length: ${userRequest?.length}`);
-  console.log(`[${jobId}] Contact email: ${contactEmail || 'none'}`);
-  console.log(`[${jobId}] Anthropic key: ${!!process.env.ANTHROPIC_API_KEY}`);
-  console.log(`[${jobId}] Google key: ${!!process.env.GOOGLE_API_KEY}`);
+  console.log(`[${jobId}] Contact: ${contactEmail || 'none'}`);
+  console.log(`[${jobId}] Keys: Anthropic=${!!process.env.ANTHROPIC_API_KEY} Google=${!!process.env.GOOGLE_API_KEY}`);
 
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Connection', 'close');
@@ -998,85 +956,59 @@ app.post('/build-async', async (req, res) => {
 
   (async () => {
     try {
-
-      // ── PASS 1: Full site, all JS working, all 11 sections ─────────────────
+      // ── PASS 1 ─────────────────────────────────────────────────────────────
       console.log(`\n[${jobId}] ── PASS 1: Full site generation`);
       jobs[jobId].phase = 'pass1';
       const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
-      console.log(`[${jobId}] Pass 1 done: ${pass1Html.length} chars`);
-      if (pass1Html.length < 8000) throw new Error(`Pass 1 too short: ${pass1Html.length} chars`);
+      console.log(`[${jobId}] Pass 1: ${pass1Html.length} chars`);
+      if (pass1Html.length < 8000) throw new Error(`Pass 1 too short: ${pass1Html.length}`);
 
-      // ── PASS 2: Surgical audit — JS fixes + data-slot JSON only ───────────
-      console.log(`\n[${jobId}] ── PASS 2: Surgical audit (JS fixes + slots)`);
+      // ── PASS 2 — Surgical audit ────────────────────────────────────────────
+      console.log(`\n[${jobId}] ── PASS 2: Surgical audit`);
       jobs[jobId].phase = 'pass2';
 
-      // Only send a compact summary to Pass 2, not the full HTML
-      // Extract img srcs and check for key JS patterns
       const imgSrcs = [];
       const imgPat = /src="(https?:\/\/[^"]+)"/gi;
       let im;
       while ((im = imgPat.exec(pass1Html)) !== null) imgSrcs.push(im[1]);
 
-      const jsSummary = {
+      const summary = {
         hasCursorDot: pass1Html.includes('cursor-dot'),
-        hasNavScroll: pass1Html.includes('scrollY') || pass1Html.includes('scroll'),
-        hasFaqAccordion: pass1Html.includes('faq-item') || pass1Html.includes('faq_item') || pass1Html.includes('[data-faq]'),
+        hasNavScroll: pass1Html.includes('scrollY'),
+        hasFaq: pass1Html.includes('faq-item') || pass1Html.includes('faq-question'),
         hasTabs: pass1Html.includes('data-tab') && pass1Html.includes('data-panel'),
         hasCarousel: pass1Html.includes('testimonial-slide') || pass1Html.includes('data-slide'),
         hasCounters: pass1Html.includes('data-count'),
         hasReveal: pass1Html.includes('reveal'),
         hasContactForm: pass1Html.includes('contact-form'),
         hasMobileMenu: pass1Html.includes('hamburger') || pass1Html.includes('mobile-toggle'),
+        hasFooter: pass1Html.includes('<footer'),
         imgSrcs: imgSrcs.slice(0, 30),
-        sectionIds: (pass1Html.match(/id=["']([^"']+)["']/gi) || []).slice(0, 40).map(s => s.replace(/id=["']/,'').replace(/["']/,''))
       };
 
-      const pass2Prompt = `Audit this site's JS completeness and image tags.
-Site summary:
-${JSON.stringify(jsSummary, null, 2)}
-
-Full HTML (for context):
-${pass1Html.substring(0, 12000)}
-...
-${pass1Html.substring(pass1Html.length - 4000)}
-
-Return ONLY raw JSON (no markdown, no backticks):
-{
-  "fixes": [
-    { "id": "fix-id", "description": "what it fixes", "script": "complete IIFE JS string" }
-  ],
-  "slots": [
-    { "src": "exact-src-from-html", "slot": "descriptive-slot-id" }
-  ]
-}
-
-For fixes: only add fixes for things that are genuinely missing or broken based on the summary flags.
-For slots: create one entry per unique img src in imgSrcs, with a descriptive slot name.`;
+      console.log(`[${jobId}] Summary flags:`, JSON.stringify(summary).substring(0, 200));
 
       let pass2Json = { fixes: [], slots: [] };
       try {
-        const pass2Raw = await callClaudeRaw(PASS2_SYSTEM_PROMPT, pass2Prompt, 8000);
-        console.log(`[${jobId}] Pass 2 raw length: ${pass2Raw.length}`);
+        const pass2Raw = await callClaudeRaw(
+          PASS2_SYSTEM_PROMPT,
+          `Site audit summary: ${JSON.stringify(summary, null, 2)}\n\nHTML snippet (first 8000 chars):\n${pass1Html.substring(0, 8000)}`,
+          8000
+        );
         pass2Json = safeParseJson(pass2Raw);
-        console.log(`[${jobId}] Pass 2: ${pass2Json.fixes?.length || 0} fixes, ${pass2Json.slots?.length || 0} slots`);
+        console.log(`[${jobId}] Pass 2: ${pass2Json.fixes?.length||0} fixes, ${pass2Json.slots?.length||0} slots`);
       } catch (err) {
-        console.error(`[${jobId}] Pass 2 parse failed: ${err.message} — proceeding with Pass 1 only`);
+        console.error(`[${jobId}] Pass 2 failed: ${err.message} — continuing`);
       }
 
-      // Apply surgical fixes + slots to Pass 1 HTML
       let html = applyPass2(pass1Html, pass2Json);
-      console.log(`[${jobId}] After Pass 2 injection: ${html.length} chars`);
 
-      // Inject contact email
-      if (contactEmail) {
-        html = injectContactEmail(html, contactEmail);
-        console.log(`[${jobId}] Contact email injected`);
-      }
-
-      // Safety net: ensure contact form exists
+      // Post-processing
+      if (contactEmail) { html = injectContactEmail(html, contactEmail); console.log(`[${jobId}] Contact email injected`); }
       html = ensureContactSection(html);
+      html = ensureFooter(html);
 
-      // ── PASS 3: Image generation ───────────────────────────────────────────
+      // ── PASS 3 ─────────────────────────────────────────────────────────────
       console.log(`\n[${jobId}] ── PASS 3: Image generation`);
       jobs[jobId].phase = 'pass3';
       const finalHtml = await injectBrandedImages(html, userRequest, jobId);
@@ -1085,7 +1017,7 @@ For slots: create one entry per unique img src in imgSrcs, with a descriptive sl
       console.log(`\n[${jobId}] ✓ Complete. Final: ${(finalHtml.length/1024/1024).toFixed(2)}MB`);
 
     } catch (err) {
-      console.error(`[${jobId}] Fatal error: ${err.message}`);
+      console.error(`[${jobId}] Fatal: ${err.message}`);
       jobs[jobId] = { status: 'error', phase: 'error', error: err.message };
     }
   })();
@@ -1112,10 +1044,10 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/test-image', async (req, res) => {
-  console.log('[test-image] Testing Imagen 3');
+  console.log('[test-image] Testing Imagen 4');
   const result = await generateImageWithRetry(
-    'A premium luxury skincare serum bottle on white marble, soft studio lighting, no text, no watermarks, professional product photography',
-    '1:1', 2
+    'A luxury nail salon interior, soft champagne and blush tones, marble surfaces, editorial lighting, no text, no watermarks, professional photography',
+    '16:9', 2
   );
   if (result) {
     res.json({ success: true, message: `OK — ${Math.round(result.length/1024)}kb` });
