@@ -628,6 +628,170 @@ function finalQualityEnforce(html, userRequest, contactEmail) {
   return html;
 }
 
+async function expandIncompleteWebsite(html, userRequest, qualityReport, jobId) {
+  const needsExpansion =
+    qualityReport.sectionIds.length < 6 ||
+    qualityReport.imageCount < 4;
+
+  if (!needsExpansion) {
+    console.log(`[${jobId}] Expansion pass skipped`);
+    return html;
+  }
+
+  console.log(`[${jobId}] PASS 2.5: website expansion repair`);
+
+  const existingSections = qualityReport.sectionIds.join(', ') || 'none';
+
+  const repairPrompt = `
+You previously generated an incomplete website.
+
+CURRENT ISSUES:
+- Existing sections: ${existingSections}
+- Current image count: ${qualityReport.imageCount}
+- Website is missing important full-page sections.
+- Website does not contain enough real <img> elements.
+- The design style itself is good and MUST be preserved.
+
+YOUR TASK:
+Expand this into a COMPLETE premium website while preserving the exact existing visual direction, typography, spacing, colors, and brand identity.
+
+VERY IMPORTANT:
+- DO NOT restart from scratch.
+- DO NOT change the style direction.
+- DO NOT convert into side panels.
+- DO NOT remove existing sections.
+- EXPAND the website.
+
+YOU MUST ADD:
+- stats/proof section
+- services/features section
+- about/story section
+- portfolio/results/gallery section
+- testimonials/reviews section
+- FAQ section
+- enhanced footer
+- more image sections
+
+VERY IMPORTANT IMAGE RULES:
+- Use REAL image tags.
+- Use placehold.co placeholders ONLY.
+- Minimum 8 image placeholders.
+- Example:
+<img src="https://placehold.co/1200x800" data-slot="luxury-gallery-1">
+
+DO NOT:
+- use only SVG illustrations
+- use only gradients
+- use only CSS graphics
+
+Keep all existing branding and styling.
+
+USER REQUEST:
+${userRequest}
+
+CURRENT HTML:
+${html}
+
+Return ONLY the improved full HTML document.
+`;
+
+  let repaired = await callClaude(
+    MASTER_SYSTEM_PROMPT,
+    repairPrompt,
+    24000
+  );
+
+  repaired = cleanHtml(repaired);
+
+  console.log(
+    `[${jobId}] Expansion pass complete. New size: ${(repaired.length / 1024).toFixed(0)}kb`
+  );
+
+  return repaired;
+}
+
+async function expandIncompleteWebsite(html, userRequest, qualityReport, jobId) {
+  const needsExpansion =
+    qualityReport.sectionIds.length < 6 ||
+    qualityReport.imageCount < 4;
+
+  if (!needsExpansion) {
+    console.log(`[${jobId}] Expansion pass skipped`);
+    return html;
+  }
+
+  console.log(`[${jobId}] PASS 2.5: website expansion repair`);
+
+  const existingSections = qualityReport.sectionIds.join(', ') || 'none';
+
+  const repairPrompt = `
+You previously generated an incomplete website.
+
+CURRENT ISSUES:
+- Existing sections: ${existingSections}
+- Current image count: ${qualityReport.imageCount}
+- Website is missing important full-page sections.
+- Website does not contain enough real <img> elements.
+- The design style itself is good and MUST be preserved.
+
+YOUR TASK:
+Expand this into a COMPLETE premium website while preserving the exact existing visual direction, typography, spacing, colors, and brand identity.
+
+VERY IMPORTANT:
+- DO NOT restart from scratch.
+- DO NOT change the style direction.
+- DO NOT convert into side panels.
+- DO NOT remove existing sections.
+- EXPAND the website.
+
+YOU MUST ADD:
+- stats/proof section
+- services/features section
+- about/story section
+- portfolio/results/gallery section
+- testimonials/reviews section
+- FAQ section
+- enhanced footer
+- more image sections
+
+VERY IMPORTANT IMAGE RULES:
+- Use REAL image tags.
+- Use placehold.co placeholders ONLY.
+- Minimum 8 image placeholders.
+- Example:
+<img src="https://placehold.co/1200x800" data-slot="luxury-gallery-1">
+
+DO NOT:
+- use only SVG illustrations
+- use only gradients
+- use only CSS graphics
+
+Keep all existing branding and styling.
+
+USER REQUEST:
+${userRequest}
+
+CURRENT HTML:
+${html}
+
+Return ONLY the improved full HTML document.
+`;
+
+  let repaired = await callClaude(
+    MASTER_SYSTEM_PROMPT,
+    repairPrompt,
+    24000
+  );
+
+  repaired = cleanHtml(repaired);
+
+  console.log(
+    `[${jobId}] Expansion pass complete. New size: ${(repaired.length / 1024).toFixed(0)}kb`
+  );
+
+  return repaired;
+}
+
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   try {
     const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -758,26 +922,33 @@ async function callClaudeJson(userMessage, maxTokens = 3500) {
 function detectIndustry(text) {
   text = String(text || '').toLowerCase();
 
-  if (text.includes('med spa') || text.includes('medspa') || text.includes('aesthetic') || text.includes('injectable') || text.includes('botox') || text.includes('filler') || text.includes('laser') || text.includes('clinic') || text.includes('medical')) return 'aesthetics_clinic';
-  if (text.includes('nail') || text.includes('manicure') || text.includes('pedicure')) return 'nail_salon';
-  if (text.includes('skincare') || text.includes('cosmetic') || text.includes('beauty')) return 'skincare';
-  if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
-  if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) return 'fashion';
-  if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) return 'restaurant';
-  if (text.includes('fitness') || text.includes('gym') || text.includes('workout')) return 'fitness';
-  if (text.includes('robot') || text.includes('robotics')) return 'robotics';
-  if (text.includes('jewelry') || text.includes('jewellery')) return 'jewelry';
-  if (text.includes('hotel') || text.includes('resort') || text.includes('travel')) return 'hospitality';
-  if (text.includes('wellness') || text.includes('spa') || text.includes('yoga')) return 'wellness';
-  if (text.includes('real estate') || text.includes('property')) return 'real_estate';
-  if (text.includes('tech') || text.includes('software') || text.includes('saas')) return 'technology';
-  if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
-  if (text.includes('photography') || text.includes('photographer')) return 'photography';
-  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrician') || text.includes('contractor')) return 'trades';
-  if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
-  if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
-  if (text.includes('aerospace') || text.includes('rocket') || text.includes('space') || text.includes('satellite')) return 'aerospace';
-  if (text.includes('landing') || text.includes('app')) return 'saas';
+  if (
+    text.includes('jewelry') ||
+    text.includes('jewellery') ||
+    text.includes('ring') ||
+    text.includes('necklace') ||
+    text.includes('diamond') ||
+    text.includes('luxury jewelry') ||
+    text.includes('earrings')
+  ) return 'jewelry';
+
+  if (
+    text.includes('med spa') ||
+    text.includes('medspa') ||
+    text.includes('aesthetic') ||
+    text.includes('injectable') ||
+    text.includes('botox') ||
+    text.includes('filler') ||
+    text.includes('laser clinic')
+  ) return 'aesthetics_clinic';
+
+  if (text.includes('fashion') || text.includes('clothing')) return 'fashion';
+  if (text.includes('restaurant')) return 'restaurant';
+  if (text.includes('coffee')) return 'coffee';
+  if (text.includes('fitness')) return 'fitness';
+  if (text.includes('real estate')) return 'real_estate';
+  if (text.includes('technology') || text.includes('saas')) return 'technology';
+  if (text.includes('music')) return 'music';
 
   return 'business';
 }
@@ -1083,11 +1254,34 @@ app.post('/build-async', async (req, res) => {
 
       html = finalQualityEnforce(html, userRequest, contactEmail);
 
-      const beforeImagesReport = getQualityReport(html);
-      console.log(`[${jobId}] Quality before images:`, JSON.stringify(beforeImagesReport));
+     let beforeImagesReport = getQualityReport(html);
 
-      jobs[jobId].phase = 'pass3-images';
-      html = await injectBrandedImages(html, userRequest, jobId);
+console.log(
+  `[${jobId}] Quality before images:`,
+  JSON.stringify(beforeImagesReport)
+);
+
+html = await expandIncompleteWebsite(
+  html,
+  userRequest,
+  beforeImagesReport,
+  jobId
+);
+
+beforeImagesReport = getQualityReport(html);
+
+console.log(
+  `[${jobId}] Quality AFTER expansion:`,
+  JSON.stringify(beforeImagesReport)
+);
+
+jobs[jobId].phase = 'pass3-images';
+
+html = await injectBrandedImages(
+  html,
+  userRequest,
+  jobId
+);
 
       jobs[jobId].phase = 'final-quality';
       html = finalQualityEnforce(html, userRequest, contactEmail);
