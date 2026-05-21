@@ -10,117 +10,437 @@ app.use(express.json({ limit: '10mb' }));
 const jobs = {};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MASTER DESIGN SYSTEM PROMPT
+// PASS 1 — MASTER PROMPT
+// Delivers complete site with ALL JS working. Pass 2 is surgical only.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MASTER_SYSTEM_PROMPT = `You are the world's best UI/UX designer and frontend developer combined.
-You build stunning, award-winning websites that look like they cost $10,000-$50,000 to produce.
-Every site you build is a complete, multi-section, fully responsive HTML file.
+const MASTER_SYSTEM_PROMPT = `You are the world's best brand identity designer and frontend developer combined.
+You build stunning, award-winning websites that look like they cost $10,000–$50,000 to produce.
+Every site is a complete, single HTML file with all CSS and JS included and fully working.
 
-DESIGN PHILOSOPHY:
-- Every site must have a strong, unique visual identity
-- Use industry-appropriate color psychology (NOT default white/gold/black for everything)
-- Typography must be intentional — mix a display font with a body font from Google Fonts
-- Layouts must be sophisticated: asymmetric grids, overlapping elements, bold section breaks
-- Every section must feel intentional and designed, not templated
-- Dark, rich backgrounds with strategic use of light — cinematic quality
-- Micro-animations and scroll reveals on every section
-- Mobile-first responsive design
-- CURSOR RULE: Always design a custom branded cursor overlay — a 20px circle in the site's primary accent color, fixed position, pointer-events:none, z-index:9999. Use JS mousemove with smooth lerp to follow the cursor. Scale to 40px on hover over links/buttons. NEVER cursor:none — default cursor always visible underneath.
-- SCROLL REVEAL RULE: All content must be fully visible by default. Never set opacity:0 or visibility:hidden in CSS on content. JS adds "js-ready" class to body on DOMContentLoaded, then CSS targets .js-ready .reveal with opacity:0 and translateY(30px), then IntersectionObserver adds "revealed" class.
+════════════════════════════════════════════════════════════════════════
+STEP 1 — DESIGN THE BRAND IDENTITY FIRST (before writing any HTML)
+This is the most important step. The entire site derives from the brand.
+════════════════════════════════════════════════════════════════════════
 
-LOGO REQUIREMENTS (CRITICAL — DO THIS FIRST BEFORE ANYTHING ELSE):
-Step 1: Design the SVG logo FIRST as a <symbol id="brand-logo" viewBox="0 0 280 60"> element.
-Step 2: Derive the entire site's color palette, typography, and visual language FROM the logo.
-Step 3: Every section of the site must feel like it belongs to the same brand as the logo.
+Before writing a single line of HTML, mentally design:
+  A) The logo mark + wordmark
+  B) The color palette (3-4 vars)
+  C) The typography pairing
+  D) The visual tone and texture language
 
-LOGO DESIGN RULES:
-- The logo MUST have TWO parts: a geometric icon/mark on the left AND a styled wordmark on the right
-- ICON: Use only clean geometric SVG shapes — circles, arcs, lines, polygons, simple paths
-  * Think Nike swoosh simplicity — one clean geometric idea executed perfectly
-  * Aerospace/space: orbital arc, geometric rocket silhouette, or precision crosshair
-  * Coffee/food: minimal cup shape, leaf, or ingredient form using ellipses and lines
-  * Medical/wellness: clean circle with inner element, minimal cross, or leaf form
-  * Trades: bold wrench silhouette, pipe cross-section, or structural geometric
-  * Tech/software: precise geometric grid, circuit node, or angular mark
-  * Fashion/luxury: refined single letterform or elegant abstract mark
-  * The icon must be clearly readable at 30px height — NO abstract blobs, NO organic squiggles
-- WORDMARK: Style the brand name with intentional SVG text
-  * Apply letter-spacing, font-weight reference in fontFamily, or color accent on one letter
-  * Use a font that matches the brand personality — serif for luxury, sans for tech, etc
-  * Never just plain unstyled text
-- COLORS: Choose 2-3 brand colors appropriate to the industry
-  * These exact colors must be used as the site accent colors throughout
-  * Hex codes must be defined and consistent
-- Place the <symbol> inside a hidden <svg style="display:none"> at the very top of <body>
-- Use it in navbar: <svg class="logo-svg" style="width:180px;height:45px;display:block"><use href="#brand-logo"/></svg>
-- Use it in footer: <svg class="logo-svg" style="width:180px;height:45px;display:block"><use href="#brand-logo"/></svg>
-- The logo must look like it was designed by a professional brand studio
+Then build the ENTIRE site to match that brand identity.
 
-EVERY SITE MUST INCLUDE THESE SECTIONS (ALL REQUIRED — NO EXCEPTIONS):
-1. Fixed navbar (transparent to solid on scroll) with SVG logo and nav links
-2. Full-screen hero (100vh) with headline, subheading, CTAs, and hero background image
-3. Stats/social proof bar with animated counters
-4. Services or Products section with cards (minimum 6 items) with icons and full descriptions
-5. About/Story section with text and image side by side
-6. Featured work, portfolio, or process/steps section
-7. Team or credentials section with portrait images and bios
-8. Testimonials carousel with star ratings (minimum 3 testimonials)
-9. FAQ accordion — minimum 6 questions each with 2-4 sentence answers — NEVER leave answers empty
-10. Contact section with form using action="CONTACT_FORM_ENDPOINT" method="POST"
-11. Footer with SVG logo, links, social icons, and copyright
+──── A) LOGO — NON-NEGOTIABLE QUALITY STANDARD ────
 
-IMAGE REQUIREMENTS (CRITICAL):
-- For EVERY image use an <img> tag with src="https://placehold.co/WIDTHxHEIGHT"
-- hero: 1920x1080, team portraits: 400x400, service cards: 600x400, about: 800x600
-- HERO SECTION: <img> absolutely positioned, position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0. Dark overlay div z-index:1. Content z-index:2.
-- NO CSS background-image with real URLs anywhere
-- NO Unsplash or external image URLs
+The logo lives in: <symbol id="brand-logo" viewBox="0 0 300 70">
+Placed inside <svg style="display:none"> at top of <body>.
+Used everywhere as: <svg style="width:200px;height:50px;display:block"><use href="#brand-logo"/></svg>
 
-NAVBAR (CRITICAL):
-- Default state: background: transparent !important; backdrop-filter: none !important;
-- NEVER add any background color to the navbar default state
-- JS: window.addEventListener('scroll', () => { const nav = document.querySelector('nav, .navbar, header'); if(nav) nav.classList.toggle('scrolled', window.scrollY > 80); });
-- CSS: nav.scrolled, .navbar.scrolled, header.scrolled { background: rgba(10,10,10,0.97) !important; backdrop-filter: blur(20px) !important; border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+THE ICON MARK (left ~65×65 of the viewBox):
+Choose ONE of these construction methods — execute it with mastery:
 
-FAQ (CRITICAL):
-- Minimum 6 FAQ items
-- Every single FAQ item MUST have a complete written answer of 2-4 sentences
-- NEVER leave an answer empty or as placeholder text
-- Clicking opens/closes with smooth animation — one open at a time
+METHOD A — COMPOUND OVERLAP MARK:
+  Take 2-3 geometric primitives (circles, ellipses, polygons, arcs).
+  Offset or rotate them so they partially overlap.
+  Use <clipPath> so the overlap zone shows a different fill (the accent color).
+  Outer shapes: 2-3px stroke in a secondary color, semi-transparent fill.
+  Result: a layered, dimensional mark that looks engineered.
+  Example for aerospace: two ellipses at 45° angles, overlap zone filled electric yellow,
+  outer rings thin cyan strokes — suggesting orbital intersection paths.
 
-CONTACT FORM (CRITICAL):
-- form action="CONTACT_FORM_ENDPOINT" method="POST"
-- Include: Full Name, Email, Phone (optional), Message textarea, Submit button
-- Hidden fields: <input type="hidden" name="_subject" value="New Enquiry">
-- Hidden fields: <input type="hidden" name="_captcha" value="false">
-- Dark styled inputs with accent color focus glow
-- Success message shown after submit
+METHOD B — DECONSTRUCTED LETTERFORM:
+  Take the brand's first letter. Break it into 2-4 thick rectangular/polygonal strokes.
+  Recompose with deliberate spacing, rotation, or extension beyond the bounding box.
+  Add one accent element: a dot, arc, underline, or encircling ring in the accent color.
+  Font weight equivalent: 900. Stroke ends: square caps for tech, round for organic brands.
+  Example: "A" as two thick angled rects (fill: white) + accent-colored crossbar rect
+  + thin partial circle arc sweeping from top-left to bottom-right.
 
-FILTER TABS:
-- data-tab="name" on buttons, data-tab-content="name" on content sections
-- All tabs functional — clicking any tab shows its content
+METHOD C — CONCEPT SYMBOL:
+  A single geometric concept that represents the brand's core idea.
+  Built ONLY from SVG primitives: rect, circle, ellipse, polygon, path, line.
+  Must use a <linearGradient> or <radialGradient> inside <defs> for at least one element.
+  Must have a <filter> with feGaussianBlur for a subtle glow on the key element.
+  Industry examples:
+  - Aerospace: tapered exhaust plume polygon (gradient: accent→transparent) + two swept
+    trajectory arcs as thick strokes, suggesting a rocket's path continuing off-mark
+  - Medical/aesthetics: a stylized cell or droplet — teardrop polygon + inner circle
+    offset upward, gradient fill from accent to deeper shade
+  - Trades: isometric cube corner — three rhombus shapes, each a different brand shade,
+    creating a 3D block illusion from flat geometry
+  - Tech/SaaS: three concentric partial arcs (like a signal/wifi) rotated 45°,
+    each arc a different opacity of the accent color, center dot filled solid
+  - Fitness: a dynamic forward-slash shape (thick, rounded ends) with a circular
+    weight disc at each tip — bold, kinetic, immediately readable
+  - Coffee: a side-profile cup trapezoid + steam as a triple sine-wave path,
+    cup filled with gradient from dark espresso to warm amber
 
-CAROUSELS:
-- prev/next wrap around, auto-advance 5s, dots clickable
+ICON MUST-HAVES (every single one):
+  ✓ Uses 2-3 colors from the brand palette — NOT just white/grey
+  ✓ Has visual weight — at least one filled shape, not just thin outlines
+  ✓ Contains a <linearGradient> or <radialGradient> inside <defs>
+  ✓ Contains a <filter id="glow"> with feGaussianBlur stdDeviation="3" for premium feel
+  ✓ Clearly readable and recognizable at 35px rendered height
+  ✓ Feels engineered and intentional — not clip-art, not a default icon set
 
-JAVASCRIPT REQUIREMENTS:
-- Navbar scroll transparency to solid
-- Custom branded cursor with lerp
-- All tabs/filters working
-- FAQ accordion with full answers
-- Animated counters on scroll
-- Carousel/slider
-- Form validation + success state
-- Smooth anchor scroll
-- Mobile hamburger menu
-- Scroll reveal with js-ready pattern
+THE WORDMARK (right side, ~220px wide):
+Choose ONE technique:
 
-TECHNICAL:
-- Single HTML file, CSS in <style>, JS in <script>
-- Google Fonts via @import
-- Minimum 1200 lines
-- Pixel perfect mobile and desktop`;
+TECHNIQUE 1 — SPLIT COLOR:
+  Brand name in ALL CAPS, font-size 26-28, font-weight 800, letter-spacing 4+.
+  One letter or syllable rendered in accent color, rest in white.
+  Tagline or descriptor below at font-size 9, letter-spacing 3, fill: rgba(255,255,255,0.5).
+  A 1px horizontal rule between name and tagline in accent color at 40% opacity.
+
+TECHNIQUE 2 — STACKED BADGE:
+  Brand name bold + large on top line.
+  Descriptor/industry text below in lighter weight, spaced out.
+  Thin accent-colored rectangle (2px tall, 30px wide) as a divider between lines.
+
+TECHNIQUE 3 — OUTLINED CONTRAST:
+  Alternate letters: odd ones filled white, even ones stroke-only (fill:none, stroke:accent, stroke-width:1.5).
+  Creates editorial high-fashion feel. Bold font-weight 900.
+
+──── B) COLOR PALETTE ────
+Define as CSS vars on :root. Pick unexpected, industry-right colors.
+Required vars:
+  --c-bg: main dark background (almost never pure black — use #050510, #0a0806, #0d0d0a etc)
+  --c-surface: card/panel background (slightly lighter than bg)
+  --c-accent: the electric pop color — this defines the brand personality
+  --c-accent2: secondary accent for gradients and hover states
+  --c-text: near-white body text
+  --c-text-muted: 50-60% opacity text
+
+Unexpected accent color ideas (do NOT default to safe choices):
+  Aerospace/tech: #E8FF00 acid yellow, #FF3CAC hot magenta, #00FFD1 electric teal
+  Medical/luxury: #C8A97E warm gold, #E8C4B8 blush rose, #A8D8A8 sage
+  Trades/industrial: #FF6B35 construction orange, #FFD23F safety yellow, #06FFA5 electric green
+  Fitness/sport: #39FF14 neon green, #FF006E neon pink, #FB5607 vivid orange
+  Coffee/food: #E8C547 warm amber, #FF8C42 citrus, #6BCB77 fresh herb
+  Finance/SaaS: #7C3AED deep violet, #2563EB royal blue, #059669 emerald
+
+──── C) TYPOGRAPHY ────
+Import 2 Google Fonts — one display, one body.
+Display font examples by industry:
+  Aerospace/tech: Orbitron, Rajdhani, Space Grotesk, Exo 2
+  Luxury/fashion: Cormorant Garamond, Playfair Display, DM Serif Display
+  Trades/industrial: Oswald, Barlow Condensed, Anton
+  Fitness: Bebas Neue, Black Han Sans, Russo One
+  Medical/wellness: Josefin Sans, Nunito, Lato
+  Creative/portfolio: Syne, Cabinet Grotesk, Clash Display
+
+Body font: always pair with a clean readable sans (Inter, DM Sans, Manrope, Plus Jakarta Sans)
+
+──── D) VISUAL TONE ────
+Apply consistently across every section:
+  - Dark backgrounds with subtle texture (CSS noise via SVG filter, or radial gradients)
+  - Sections separated by: angled clip-path dividers, or full-bleed accent strips, or gradient fades
+  - Cards: glass morphism (backdrop-filter:blur + semi-transparent border) OR dark solid with accent border-left
+  - All CTAs: accent color background, dark text, subtle box-shadow glow matching accent color
+
+════════════════════════════════════════════════════════════════════════
+STEP 2 — BUILD ALL 11 SECTIONS (ALL REQUIRED — ZERO EXCEPTIONS)
+════════════════════════════════════════════════════════════════════════
+
+1. FIXED NAVBAR
+   - position:fixed, top:0, width:100%, z-index:1000
+   - Default: background:transparent, backdrop-filter:none
+   - SVG logo (use href="#brand-logo") on left
+   - All nav links in center/right — link to every section via #id anchors
+   - CTA button (accent color) on far right
+   - Mobile: hamburger icon toggles fullscreen nav overlay
+
+2. HERO (100vh, full screen)
+   - <img> for hero background: position:absolute, top:0, left:0, width:100%, height:100%, object-fit:cover, z-index:0
+   - Dark overlay: position:absolute, inset:0, background:linear-gradient(to bottom, rgba(bg,0.7), rgba(bg,0.9)), z-index:1
+   - All hero content: position:relative, z-index:2
+   - Headline: font-size clamp(3rem, 8vw, 7rem), font-weight:900, line-height:1.0
+   - Subheading: font-size clamp(1rem, 2vw, 1.3rem), max-width:600px, opacity:0.8
+   - Two CTAs: primary (accent bg) + secondary (transparent border)
+   - Optional: decorative HUD elements, stat badges, or animated lines as brand flavor
+
+3. STATS BAR
+   - 4-6 stats with large numbers + labels
+   - Numbers animate from 0 to final value when scrolled into view (IntersectionObserver)
+   - Dark surface background, accent-colored numbers
+
+4. SERVICES / PRODUCTS (min 6 cards)
+   - Each card: SVG icon, title, 2-3 sentence description
+   - Cards use brand's glass/dark style
+   - Hover: accent border glow + slight translateY(-4px)
+
+5. ABOUT / STORY
+   - Two-column: text left, image right (or reversed)
+   - Compelling brand narrative — specific to the business, not generic filler
+   - Brand accent used for section label, pull quote, or highlight text
+
+6. PORTFOLIO / PROCESS / FEATURED WORK
+   - If portfolio: image grid with overlay on hover
+   - If process: numbered steps with icons and descriptions
+   - If slider tabs exist here: ALL tab buttons must be wired up, each panel has real content
+
+7. TEAM
+   - Grid of team cards: portrait <img>, name, title, 1-2 sentence bio
+   - Min 3 team members
+
+8. TESTIMONIALS CAROUSEL
+   - Min 3 testimonials: quote text, star rating (★★★★★), client name, company/title
+   - Prev/next buttons: fully wired, wrap around
+   - Auto-advance every 5 seconds
+   - Dot indicators: clickable, update on slide change
+
+9. FAQ ACCORDION
+   - Min 6 questions
+   - EVERY answer: 2-4 complete sentences — specific to the business, no placeholders
+   - Click to open/close, smooth max-height transition
+   - Only one open at a time
+   - Accent color on open item's question text
+
+10. CONTACT SECTION
+    - <section id="contact">
+    - <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST">
+    - Fields: Full Name (required), Email (required), Phone (optional), Message textarea (required)
+    - Hidden: <input type="hidden" name="_subject" value="New Enquiry">
+    - Hidden: <input type="hidden" name="_captcha" value="false">
+    - Inputs: dark bg, accent border on focus with box-shadow glow
+    - Submit: accent color bg, dark text, full width or large button
+    - On submit: hide form, show styled success message div
+
+11. FOOTER
+    - SVG logo (use href="#brand-logo")
+    - Navigation links organized in columns
+    - Social media icons (SVG paths — no external icon libraries)
+    - Copyright line
+    - Dark background, subtle top border in accent color at low opacity
+
+════════════════════════════════════════════════════════════════════════
+STEP 3 — ALL JAVASCRIPT (WORKING, IN-FILE, NO EXCEPTIONS)
+Every single interaction must be coded and working in the output file.
+════════════════════════════════════════════════════════════════════════
+
+── CUSTOM CURSOR (CRITICAL — must activate immediately on page load) ──
+Add <div id="cursor-dot"></div> as the VERY FIRST element inside <body>.
+CSS:
+  #cursor-dot {
+    position: fixed;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    pointer-events: none;
+    z-index: 99999;
+    transform: translate(-50%, -50%);
+    transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+    box-shadow: 0 0 12px var(--c-accent), 0 0 24px var(--c-accent);
+  }
+  #cursor-dot.large {
+    width: 36px;
+    height: 36px;
+    opacity: 0.6;
+  }
+JS (use this EXACT pattern — do not deviate):
+  (function() {
+    var dot = document.getElementById('cursor-dot');
+    if (!dot) return;
+    var mx = window.innerWidth / 2, my = window.innerHeight / 2;
+    var cx = mx, cy = my;
+    dot.style.left = cx + 'px';
+    dot.style.top = cy + 'px';
+    document.addEventListener('mousemove', function(e) { mx = e.clientX; my = e.clientY; });
+    document.addEventListener('mouseenter', function() { dot.style.opacity = '1'; });
+    document.addEventListener('mouseleave', function() { dot.style.opacity = '0'; });
+    document.querySelectorAll('a, button, [role="button"], input, textarea, [class*="tab"], [class*="btn"]').forEach(function(el) {
+      el.addEventListener('mouseenter', function() { dot.classList.add('large'); });
+      el.addEventListener('mouseleave', function() { dot.classList.remove('large'); });
+    });
+    function loop() {
+      cx += (mx - cx) * 0.12;
+      cy += (my - cy) * 0.12;
+      dot.style.left = cx + 'px';
+      dot.style.top = cy + 'px';
+      requestAnimationFrame(loop);
+    }
+    loop();
+  })();
+NEVER use cursor:none anywhere. The system cursor stays visible. The dot is an ADDITION.
+
+── NAVBAR SCROLL ──
+  (function() {
+    var nav = document.querySelector('nav, header, .navbar, #navbar');
+    if (!nav) return;
+    function updateNav() {
+      if (window.scrollY > 80) {
+        nav.style.background = 'rgba(5,5,16,0.97)';
+        nav.style.backdropFilter = 'blur(20px)';
+        nav.style.webkitBackdropFilter = 'blur(20px)';
+        nav.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+      } else {
+        nav.style.background = 'transparent';
+        nav.style.backdropFilter = 'none';
+        nav.style.webkitBackdropFilter = 'none';
+        nav.style.borderBottom = 'none';
+      }
+    }
+    window.addEventListener('scroll', updateNav, { passive: true });
+    updateNav();
+  })();
+
+── SMOOTH SCROLL ──
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
+  });
+
+── MOBILE HAMBURGER ──
+  (function() {
+    var btn = document.querySelector('.hamburger, .mobile-toggle, #mobile-toggle, [data-mobile-toggle]');
+    var menu = document.querySelector('.mobile-menu, .nav-overlay, #mobile-menu, [data-mobile-menu]');
+    if (!btn || !menu) return;
+    btn.addEventListener('click', function() {
+      var open = menu.style.display === 'flex' || menu.classList.contains('open');
+      if (open) { menu.style.display = 'none'; menu.classList.remove('open'); btn.classList.remove('active'); }
+      else { menu.style.display = 'flex'; menu.classList.add('open'); btn.classList.add('active'); }
+    });
+  })();
+
+── SCROLL REVEALS ──
+CSS (in <style>):
+  .reveal { opacity: 1; transform: none; transition: opacity 0.7s ease, transform 0.7s ease; }
+  .js-loaded .reveal { opacity: 0; transform: translateY(28px); }
+  .js-loaded .reveal.visible { opacity: 1; transform: translateY(0); }
+JS:
+  (function() {
+    document.body.classList.add('js-loaded');
+    var els = document.querySelectorAll('.reveal');
+    if (!els.length) return;
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function(el) { io.observe(el); });
+  })();
+Apply class="reveal" to: section headings, paragraph blocks, card grids, stat items, team cards,
+  about content, portfolio items, FAQ container, contact form, footer content.
+ALL sections must have .reveal on their primary content children.
+
+── ANIMATED COUNTERS ──
+  (function() {
+    var counters = document.querySelectorAll('[data-count]');
+    if (!counters.length) return;
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (!e.isIntersecting) return;
+        var el = e.target, target = +el.dataset.count, suffix = el.dataset.suffix || '', start = 0;
+        var step = target / 60;
+        var timer = setInterval(function() {
+          start += step;
+          if (start >= target) { start = target; clearInterval(timer); }
+          el.textContent = Math.floor(start).toLocaleString() + suffix;
+        }, 16);
+        io.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(function(el) { io.observe(el); });
+  })();
+Usage: <span data-count="420" data-suffix="km">0</span>
+
+── FAQ ACCORDION ──
+  (function() {
+    var items = document.querySelectorAll('.faq-item, [data-faq]');
+    items.forEach(function(item) {
+      var q = item.querySelector('.faq-question, [data-faq-q]');
+      var a = item.querySelector('.faq-answer, [data-faq-a]');
+      if (!q || !a) return;
+      a.style.maxHeight = '0';
+      a.style.overflow = 'hidden';
+      a.style.transition = 'max-height 0.4s ease, padding 0.4s ease';
+      q.style.cursor = 'pointer';
+      q.addEventListener('click', function() {
+        var isOpen = item.classList.contains('open');
+        items.forEach(function(i) {
+          i.classList.remove('open');
+          var ia = i.querySelector('.faq-answer, [data-faq-a]');
+          if (ia) ia.style.maxHeight = '0';
+        });
+        if (!isOpen) {
+          item.classList.add('open');
+          a.style.maxHeight = a.scrollHeight + 32 + 'px';
+        }
+      });
+    });
+  })();
+
+── TABS / FILTER BUTTONS ──
+  (function() {
+    var tabs = document.querySelectorAll('[data-tab]');
+    var panels = document.querySelectorAll('[data-panel]');
+    if (!tabs.length) return;
+    function showTab(name) {
+      tabs.forEach(function(t) { t.classList.toggle('active', t.dataset.tab === name); });
+      panels.forEach(function(p) { p.style.display = p.dataset.panel === name ? 'block' : 'none'; });
+    }
+    tabs.forEach(function(t) { t.addEventListener('click', function() { showTab(t.dataset.tab); }); });
+    showTab(tabs[0].dataset.tab);
+  })();
+CRITICAL: Every [data-tab] button must have a matching [data-panel] with the same name value.
+Every panel must contain real, brand-relevant content — never empty or placeholder.
+
+── TESTIMONIALS CAROUSEL ──
+  (function() {
+    var slides = document.querySelectorAll('.testimonial-slide, [data-slide]');
+    var dots = document.querySelectorAll('.carousel-dot, [data-dot]');
+    var prev = document.querySelector('.carousel-prev, [data-prev]');
+    var next = document.querySelector('.carousel-next, [data-next]');
+    if (!slides.length) return;
+    var current = 0;
+    function show(n) {
+      current = ((n % slides.length) + slides.length) % slides.length;
+      slides.forEach(function(s, i) { s.style.display = i === current ? 'block' : 'none'; });
+      dots.forEach(function(d, i) { d.classList.toggle('active', i === current); });
+    }
+    if (prev) prev.addEventListener('click', function() { show(current - 1); });
+    if (next) next.addEventListener('click', function() { show(current + 1); });
+    dots.forEach(function(d, i) { d.addEventListener('click', function() { show(i); }); });
+    show(0);
+    setInterval(function() { show(current + 1); }, 5000);
+  })();
+
+── CONTACT FORM ──
+  (function() {
+    var form = document.getElementById('contact-form');
+    var success = document.getElementById('contact-success');
+    if (!form) return;
+    form.addEventListener('submit', function(e) {
+      var name = form.querySelector('[name="name"]');
+      var email = form.querySelector('[name="email"]');
+      var message = form.querySelector('[name="message"]');
+      if (!name || !name.value.trim()) { e.preventDefault(); name && name.focus(); return; }
+      if (!email || !email.value.trim()) { e.preventDefault(); email && email.focus(); return; }
+      if (!message || !message.value.trim()) { e.preventDefault(); message && message.focus(); return; }
+      if (success) {
+        setTimeout(function() { form.style.display = 'none'; success.style.display = 'block'; }, 800);
+      }
+    });
+  })();
+
+════════════════════════════════════════════════════════════════════════
+STEP 4 — IMAGE PLACEHOLDERS
+════════════════════════════════════════════════════════════════════════
+Every image uses <img src="https://placehold.co/WIDTHxHEIGHT" ...>
+Sizes: hero 1920x1080, team portraits 400x400, service/work cards 600x400, about 800x600
+These will be replaced by AI-generated images in a later pass.
+
+════════════════════════════════════════════════════════════════════════
+STEP 5 — TECHNICAL REQUIREMENTS
+════════════════════════════════════════════════════════════════════════
+- Single HTML file. All CSS in <style>. All JS in one <script> at end of body.
+- Google Fonts via @import url() in <style>
+- Minimum 1500 lines
+- All section IDs match navbar anchor links exactly
+- No external JS libraries — vanilla JS only
+- Pixel perfect on mobile (375px) and desktop (1440px)`;
 
 const HTML_OUTPUT_RULES = `
 
@@ -129,6 +449,55 @@ ABSOLUTE OUTPUT RULES:
 - End with </html> — nothing after it
 - No markdown fences, no explanation, no commentary
 - Raw HTML only`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PASS 2 — SURGICAL JS + DATA-SLOT INJECTION PROMPT
+// Returns ONLY a JSON object, never rewrites HTML
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PASS2_SYSTEM_PROMPT = `You are a precise code auditor and JavaScript specialist.
+You receive an HTML site and return ONLY a JSON object — never HTML, never markdown.
+
+Your job has two parts:
+1. Audit the site's interactive elements and return any missing/broken JS as self-contained fix scripts
+2. Audit every <img> tag and return data-slot assignments
+
+Return ONLY this JSON shape (raw, no markdown, no backticks):
+{
+  "fixes": [
+    {
+      "id": "short-fix-id",
+      "description": "what this fixes",
+      "script": "...complete self-contained JS as a string, wrapped in IIFE..."
+    }
+  ],
+  "slots": [
+    {
+      "src": "exact src attribute value of the img tag",
+      "slot": "descriptive-slot-id-like-hero-bg-rocket-launch-night"
+    }
+  ]
+}
+
+AUDIT RULES:
+- Check cursor: does #cursor-dot exist and have a mousemove loop? If missing or broken, add fix.
+- Check navbar: does it go transparent→solid on scroll? If missing, add fix.
+- Check FAQ: do .faq-item clicks open/close answers? If broken, add fix.
+- Check tabs: do [data-tab] buttons show/hide [data-panel] content? If broken, add fix.
+- Check carousel: do prev/next/dots work? If broken, add fix.
+- Check counters: do [data-count] elements animate? If broken, add fix.
+- Check scroll reveals: do .reveal elements get .visible class? If broken, add fix.
+- Check contact form: does #contact-form exist with validation? If broken, add fix.
+- Check mobile menu: does hamburger toggle work? If broken, add fix.
+
+SLOT RULES:
+- Every <img> tag gets a slot entry
+- src must be the EXACT src value from the HTML (for matching)
+- slot must be a descriptive hyphenated id specific to that image's purpose
+- Examples: "hero-bg-aerospace-rocket-launch-night-exhaust",
+  "team-portrait-ceo-professional-headshot", "service-card-satellite-deployment-orbit"
+
+Output ONLY the raw JSON object. No explanation. No markdown. No HTML.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITIES
@@ -146,24 +515,124 @@ function cleanHtml(html) {
 }
 
 function safeParseJson(text) {
-  const cleaned = text.trim()
-    .replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+  let cleaned = text.trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  // Extract JSON object if wrapped in other text
+  const objStart = cleaned.indexOf('{');
+  const objEnd = cleaned.lastIndexOf('}');
+  if (objStart !== -1 && objEnd !== -1) cleaned = cleaned.substring(objStart, objEnd + 1);
   return JSON.parse(cleaned);
 }
 
-// Inject Formsubmit contact email — no signup required
-// First submission triggers one-time activation email to client
-// After activation all submissions go straight to inbox forever
 function injectContactEmail(html, contactEmail) {
   if (!contactEmail) return html;
   return html.replace(/CONTACT_FORM_ENDPOINT/g, `https://formsubmit.co/${contactEmail.trim()}`);
 }
 
-// Extract contact email from userRequest — embedded as CONTACT_EMAIL: value
 function extractContactEmail(userRequest) {
   if (!userRequest) return null;
   const match = userRequest.match(/CONTACT_EMAIL:\s*([^\s\n]+)/i);
   return match ? match[1].trim() : null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SURGICAL PASS 2 INJECTION
+// Takes the JSON from Pass 2 and applies fixes + data-slots to Pass 1 HTML
+// Never touches HTML content — only injects scripts and attributes
+// ─────────────────────────────────────────────────────────────────────────────
+
+function applyPass2(html, pass2Json) {
+  let result = html;
+
+  // 1. Inject fix scripts before </body>
+  if (pass2Json.fixes && pass2Json.fixes.length > 0) {
+    const scriptBlocks = pass2Json.fixes.map(fix => {
+      console.log(`  Injecting fix: ${fix.id} — ${fix.description}`);
+      return `\n<script data-fix="${fix.id}">\n/* Fix: ${fix.description} */\n${fix.script}\n</scr` + `ipt>`;
+    }).join('\n');
+    result = result.replace('</body>', scriptBlocks + '\n</body>');
+  }
+
+  // 2. Apply data-slot attributes to img tags
+  if (pass2Json.slots && pass2Json.slots.length > 0) {
+    let slotCount = 0;
+    pass2Json.slots.forEach(function(slot) {
+      const escapedSrc = slot.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Match img tags with this src, add data-slot if not already present
+      const imgPattern = new RegExp(`(<img[^>]*src="${escapedSrc}"[^>]*)(>)`, 'gi');
+      const before = result.length;
+      result = result.replace(imgPattern, function(match, imgOpen, close) {
+        if (match.includes('data-slot')) return match; // already has slot
+        return imgOpen + ` data-slot="${slot.slot}"` + close;
+      });
+      if (result.length !== before || result.includes(`data-slot="${slot.slot}"`)) slotCount++;
+    });
+    console.log(`  Applied ${slotCount} data-slot attributes`);
+  }
+
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTACT FORM SAFETY NET
+// Hard fallback if Pass 1 somehow dropped the contact section
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ensureContactSection(html) {
+  const hasForm = /<form[^>]*id=["']contact-form["']/i.test(html) ||
+                  /<form[^>]*action[^>]*(CONTACT_FORM_ENDPOINT|formsubmit)/i.test(html);
+  if (hasForm) return html;
+
+  console.log('  Contact form missing — injecting fallback');
+
+  const section = `
+<section id="contact" style="padding:120px 0;background:var(--c-bg,#050510);">
+  <div style="max-width:680px;margin:0 auto;padding:0 24px;">
+    <div class="reveal" style="text-align:center;margin-bottom:56px;">
+      <p style="color:var(--c-accent,#00FFD1);font-size:0.8rem;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px;">Contact</p>
+      <h2 style="font-size:clamp(2rem,5vw,3.2rem);font-weight:800;color:#fff;margin:0 0 20px;">Get In Touch</h2>
+      <p style="color:var(--c-text-muted,rgba(255,255,255,0.55));font-size:1.05rem;line-height:1.7;">Ready to start? Send us a message and we'll respond within 24 hours.</p>
+    </div>
+    <div id="contact-success" style="display:none;text-align:center;padding:56px 32px;background:rgba(255,255,255,0.04);border-radius:16px;border:1px solid rgba(255,255,255,0.1);">
+      <div style="font-size:2.5rem;margin-bottom:16px;">✓</div>
+      <p style="color:#fff;font-size:1.2rem;font-weight:700;margin-bottom:8px;">Message Sent</p>
+      <p style="color:var(--c-text-muted,rgba(255,255,255,0.55));">We'll be in touch shortly.</p>
+    </div>
+    <form id="contact-form" action="CONTACT_FORM_ENDPOINT" method="POST" class="reveal" style="display:flex;flex-direction:column;gap:22px;">
+      <input type="hidden" name="_subject" value="New Enquiry">
+      <input type="hidden" name="_captcha" value="false">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;">
+        <div>
+          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Full Name *</label>
+          <input type="text" name="name" required placeholder="Your name" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+        </div>
+        <div>
+          <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Email *</label>
+          <input type="email" name="email" required placeholder="you@email.com" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+        </div>
+      </div>
+      <div>
+        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Phone (optional)</label>
+        <input type="tel" name="phone" placeholder="+1 (555) 000-0000" style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;box-sizing:border-box;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'">
+      </div>
+      <div>
+        <label style="display:block;color:rgba(255,255,255,0.5);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Message *</label>
+        <textarea name="message" required rows="6" placeholder="Tell us about your project..." style="width:100%;padding:15px 18px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#fff;font-size:1rem;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;transition:border-color 0.3s,box-shadow 0.3s;" onfocus="this.style.borderColor='var(--c-accent,#00FFD1)';this.style.boxShadow='0 0 0 3px rgba(0,255,209,0.12)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'"></textarea>
+      </div>
+      <button type="submit" style="padding:18px 48px;background:var(--c-accent,#00FFD1);color:#050510;font-size:0.9rem;font-weight:800;letter-spacing:3px;text-transform:uppercase;border:none;border-radius:10px;cursor:pointer;transition:opacity 0.3s,transform 0.2s;align-self:stretch;" onmouseover="this.style.opacity='0.85';this.style.transform='translateY(-2px)'" onmouseout="this.style.opacity='1';this.style.transform='translateY(0)'">Send Message</button>
+    </form>
+  </div>
+</section>`;
+
+  if (html.includes('<footer')) {
+    html = html.replace('<footer', section + '\n<footer');
+  } else {
+    html = html.replace('</body>', section + '\n</body>');
+  }
+  return html;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,18 +647,16 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
     const outputBuffer = await sharp(inputBuffer)
       .resize(targetWidthPx, null, { withoutEnlargement: true, fit: 'inside' })
       .jpeg({ quality: 82, progressive: true }).toBuffer();
-    const originalKb = Math.round(inputBuffer.length / 1024);
-    const compressedKb = Math.round(outputBuffer.length / 1024);
-    console.log(`Image compressed: ${originalKb}kb -> ${compressedKb}kb`);
+    console.log(`  Compressed: ${Math.round(inputBuffer.length/1024)}kb → ${Math.round(outputBuffer.length/1024)}kb`);
     return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
-  } catch (error) {
-    console.error('Image compression error:', error.message);
+  } catch (err) {
+    console.error('Compression error:', err.message);
     return base64DataUrl;
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CLAUDE API CALLS
+// CLAUDE API
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
@@ -214,8 +681,35 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
     const data = await response.json();
     if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
     const text = data.content[0].text;
-    console.log(`callClaude raw response length: ${text.length}, starts with: ${text.substring(0, 80)}`);
+    console.log(`  Claude response: ${text.length} chars`);
     return cleanHtml(text);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callClaudeRaw(systemPrompt, userMessage, maxTokens = 8000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }]
+      }),
+      signal: controller.signal
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
+    return data.content[0].text;
   } finally {
     clearTimeout(timeout);
   }
@@ -235,7 +729,7 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: maxTokens,
-        system: 'You are a JSON generator. Your response MUST start with [ character directly. No markdown. No backticks. No explanation. No code fences. Raw JSON array only.',
+        system: 'You are a JSON generator. Respond with a raw JSON array starting with [ immediately. No markdown, no backticks, no explanation.',
         messages: [
           { role: 'user', content: userMessage },
           { role: 'assistant', content: '[' }
@@ -246,7 +740,8 @@ async function callClaudeJson(userMessage, maxTokens = 4000) {
     const data = await response.json();
     if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
     const raw = '[' + data.content[0].text.trim();
-    return safeParseJson(raw);
+    let cleaned = raw.replace(/^```json\s*/i,'').replace(/```\s*$/i,'').trim();
+    return JSON.parse(cleaned);
   } finally {
     clearTimeout(timeout);
   }
@@ -292,25 +787,25 @@ function getImageCap(industry) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// IMAGE GENERATION — gemini-2.5-flash-preview-05-20 as primary
-// (gemini-3-pro-image-preview was deprecated March 9 2026)
+// IMAGE GENERATION — Imagen 3
 // ─────────────────────────────────────────────────────────────────────────────
+
+function normalizeAspectRatio(ar) {
+  const valid = ['16:9','1:1','4:3','3:4','9:16'];
+  return valid.includes(ar) ? ar : '1:1';
+}
 
 async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts = 2) {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const result = await generateImage(prompt, aspectRatio);
       if (result) return result;
-      if (attempt < maxAttempts) {
-        console.log(`Image gen attempt ${attempt} returned null — retrying...`);
-        await new Promise(r => setTimeout(r, 1000));
-      }
-    } catch (error) {
-      console.error(`Image gen attempt ${attempt} error: ${error.message}`);
-      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1000));
+      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1500));
+    } catch (err) {
+      console.error(`  Image attempt ${attempt} error: ${err.message}`);
+      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1500));
     }
   }
-  console.error(`Image gen failed after ${maxAttempts} attempts`);
   return null;
 }
 
@@ -318,179 +813,164 @@ async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) { console.error('GOOGLE_API_KEY not set'); return null; }
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ['IMAGE', 'TEXT'] }
-        })
-      }
-    );
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: normalizeAspectRatio(aspectRatio),
+          safetySetting: 'block_only_high',
+          personGeneration: 'allow_adult',
+        }
+      })
+    });
+
     const data = await response.json();
     if (!response.ok) {
-      console.error('Image gen API error:', JSON.stringify(data));
+      console.error('  Image API error:', JSON.stringify(data).substring(0, 200));
       return null;
     }
-    for (const part of data.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        const raw = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-        return await compressBase64Image(raw, 1200);
-      }
+
+    const prediction = data.predictions?.[0];
+    if (!prediction?.bytesBase64Encoded) {
+      console.error('  No bytesBase64Encoded in response');
+      return null;
     }
-    console.error('Image gen: no inlineData in response');
-    return null;
-  } catch (error) {
-    console.error('Image generation error:', error.message);
+
+    const mimeType = prediction.mimeType || 'image/png';
+    return await compressBase64Image(`data:${mimeType};base64,${prediction.bytesBase64Encoded}`, 1200);
+  } catch (err) {
+    console.error('  generateImage error:', err.message);
     return null;
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SLOT EXTRACTION — catches <img> tags, placeholders, and CSS background-image
+// SLOT EXTRACTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 function extractImageSlots(html) {
   const slots = [];
   const seen = new Set();
 
-  const patterns = [
-    /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi,
-    /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi,
-  ];
-  for (let pi = 0; pi < patterns.length; pi++) {
-    let match;
-    while ((match = patterns[pi].exec(html)) !== null) {
-      const slotId = pi === 0 ? match[1] : match[2];
-      const src    = pi === 0 ? match[2] : match[1];
-      if (slotId && !seen.has(slotId)) {
-        seen.add(slotId);
-        slots.push({ id: slotId, src, type: 'data-slot' });
-      }
-    }
+  // data-slot tagged imgs
+  const ds1 = /<img[^>]*data-slot="([^"]*)"[^>]*src="([^"]*)"[^>]*/gi;
+  const ds2 = /<img[^>]*src="([^"]*)"[^>]*data-slot="([^"]*)"[^>]*/gi;
+  let m;
+  while ((m = ds1.exec(html)) !== null) {
+    if (!seen.has(m[1])) { seen.add(m[1]); slots.push({ id: m[1], src: m[2], type: 'data-slot' }); }
+  }
+  while ((m = ds2.exec(html)) !== null) {
+    if (!seen.has(m[2])) { seen.add(m[2]); slots.push({ id: m[2], src: m[1], type: 'data-slot' }); }
   }
 
-  const placeholderPatterns = [
-    /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
+  // Placeholder srcs
+  const placeholders = [
     /src="(https?:\/\/placehold\.co[^"]*)"/gi,
-    /src="(https?:\/\/placehold\.it[^"]*)"/gi,
-    /src="(https?:\/\/source\.unsplash[^"]*)"/gi,
-    /src="(https?:\/\/images\.unsplash[^"]*)"/gi,
-    /src="(https?:\/\/unsplash[^"]*)"/gi,
+    /src="(https?:\/\/via\.placeholder[^"]*)"/gi,
     /src="(https?:\/\/picsum\.photos[^"]*)"/gi,
     /src="(https?:\/\/dummyimage[^"]*)"/gi,
-    /src="(placeholder[^"]*\.(?:jpg|jpeg|png|webp|gif))"/gi,
   ];
-  for (const pattern of placeholderPatterns) {
-    pattern.lastIndex = 0;
-    let match;
-    while ((match = pattern.exec(html)) !== null) {
-      const src = match[1];
-      if (src && !seen.has(src)) {
-        seen.add(src);
-        slots.push({ id: `placeholder-${slots.length}`, src, type: 'src' });
+  for (const pat of placeholders) {
+    pat.lastIndex = 0;
+    while ((m = pat.exec(html)) !== null) {
+      if (!seen.has(m[1])) {
+        seen.add(m[1]);
+        slots.push({ id: `placeholder-${slots.length}`, src: m[1], type: 'src' });
       }
     }
   }
 
-  const bgPattern = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
-  let match;
-  while ((match = bgPattern.exec(html)) !== null) {
-    const src = match[1];
-    if (src && !seen.has(src) && !src.startsWith('data:')) {
-      seen.add(src);
-      const contextStart = Math.max(0, match.index - 200);
-      const context = html.substring(contextStart, match.index).toLowerCase();
-      const isHero = context.includes('hero') || context.includes('banner') || context.includes('section-hero');
-      slots.push({ id: isHero ? 'hero-background-fullscreen' : `bg-${slots.length}`, src, type: 'background' });
+  // CSS background-image
+  const bgPat = /background-image:\s*url\(['"]?(https?:\/\/[^'")\s]*)['"]?\)/gi;
+  while ((m = bgPat.exec(html)) !== null) {
+    if (!seen.has(m[1]) && !m[1].startsWith('data:')) {
+      seen.add(m[1]);
+      const ctx = html.substring(Math.max(0, m.index - 200), m.index).toLowerCase();
+      const isHero = ctx.includes('hero') || ctx.includes('banner');
+      slots.push({ id: isHero ? 'hero-background-fullscreen' : `bg-${slots.length}`, src: m[1], type: 'background' });
     }
   }
+
   return slots;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASS 3 — CONTEXT-AWARE BRANDED IMAGE INJECTION
+// PASS 3 — IMAGE INJECTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function injectBrandedImages(html, userRequest, jobId) {
-  console.log(`Job ${jobId} — Pass 3 starting (image generation)`);
+  console.log(`[${jobId}] Pass 3: image generation`);
   const industry = detectIndustry(userRequest);
-  const imageCap = getImageCap(industry);
-  console.log(`Job ${jobId} — Industry: ${industry} | Cap: ${imageCap} images`);
+  const cap = getImageCap(industry);
+  console.log(`[${jobId}] Industry: ${industry} | Cap: ${cap}`);
 
   const rawSlots = extractImageSlots(html);
-  console.log(`Job ${jobId} — Found ${rawSlots.length} slots in full HTML`);
-  if (rawSlots.length === 0) { console.log(`Job ${jobId} — No image slots, skipping`); return html; }
+  console.log(`[${jobId}] Found ${rawSlots.length} slots`);
+  if (!rawSlots.length) return html;
 
-  const slotsToProcess = rawSlots.slice(0, imageCap);
-  console.log(`Job ${jobId} — Processing ${slotsToProcess.length} slots`);
+  const slots = rawSlots.slice(0, cap);
+  console.log(`[${jobId}] Processing ${slots.length} slots`);
 
-  const promptGenRequest = `You are a world-class brand photographer and creative director.
-Brand context: ${userRequest.substring(0, 800)}
-Industry: ${industry}
-For each image slot, write a highly specific photorealistic image generation prompt.
-- Match the brand aesthetic, color palette, and mood exactly
-- Be completely specific to what that slot shows
-- Make each prompt unique
-- End with ", no text, no watermarks, no logos, professional photography"
-Slots:
-${slotsToProcess.map((s, i) => `${i}. "${s.id}"`).join('\n')}
-Return ONLY a JSON array starting with [ immediately:
-[{"index":0,"prompt":"...","aspect_ratio":"16:9"},...]
-aspect_ratio: "16:9" heroes/banners, "1:1" products/portraits/cards, "4:3" lifestyle`;
-
+  // Generate prompts
   let promptData = [];
   try {
-    promptData = await callClaudeJson(promptGenRequest, 3000);
-    console.log(`Job ${jobId} — Prompt generation succeeded: ${promptData.length} prompts`);
-  } catch (error) {
-    console.error(`Job ${jobId} — Prompt generation failed — using fallback`);
-    promptData = slotsToProcess.map((s, i) => ({
+    const promptReq = `Brand context: ${userRequest.substring(0, 800)}
+Industry: ${industry}
+Write a photorealistic image generation prompt for each slot.
+Each prompt must: match brand aesthetic, be specific to the slot's purpose, end with ", no text, no watermarks, no logos, professional photography"
+Slots: ${slots.map((s,i) => `${i}. "${s.id}"`).join('\n')}
+Return JSON array: [{"index":0,"prompt":"...","aspect_ratio":"16:9"},...]
+aspect_ratio: "16:9" heroes/banners, "1:1" portraits/cards, "4:3" lifestyle, "3:4" portrait`;
+    promptData = await callClaudeJson(promptReq, 3000);
+    console.log(`[${jobId}] Generated ${promptData.length} image prompts`);
+  } catch (err) {
+    console.error(`[${jobId}] Prompt gen failed, using fallback`);
+    promptData = slots.map((s, i) => ({
       index: i,
       prompt: `Premium ${industry} brand photography, cinematic lighting, no text, no watermarks, professional photography`,
-      aspect_ratio: (s.id.toLowerCase().includes('hero') || s.id.toLowerCase().includes('background')) ? '16:9' : '1:1'
+      aspect_ratio: s.id.includes('hero') || s.id.includes('background') ? '16:9' : '1:1'
     }));
   }
 
-  console.log(`Job ${jobId} — Generating ${slotsToProcess.length} images in parallel`);
-  const imageResults = await Promise.all(
-    slotsToProcess.map(async (slot, i) => {
-      const promptEntry = promptData[i] || promptData.find(p => p.index === i);
-      if (!promptEntry) return { ...slot, generatedImage: null };
-      console.log(`Job ${jobId} — Generating [${i + 1}/${slotsToProcess.length}]: ${slot.id}`);
-      const img = await generateImageWithRetry(promptEntry.prompt, promptEntry.aspect_ratio || '1:1', 2);
-      if (img) console.log(`Job ${jobId} — ✓ [${i + 1}] success`);
-      else console.error(`Job ${jobId} — ✗ [${i + 1}] failed`);
-      return { ...slot, generatedImage: img };
-    })
-  );
+  // Generate all images in parallel
+  const results = await Promise.all(slots.map(async (slot, i) => {
+    const entry = promptData[i] || promptData.find(p => p.index === i);
+    if (!entry) return { ...slot, img: null };
+    console.log(`[${jobId}] Generating [${i+1}/${slots.length}]: ${slot.id}`);
+    const img = await generateImageWithRetry(entry.prompt, entry.aspect_ratio || '1:1', 2);
+    console.log(`[${jobId}] [${i+1}] ${img ? 'OK' : 'FAILED'}`);
+    return { ...slot, img };
+  }));
 
-  const successCount = imageResults.filter(r => r.generatedImage).length;
-  console.log(`Job ${jobId} — ${successCount}/${slotsToProcess.length} images successful`);
+  const ok = results.filter(r => r.img).length;
+  console.log(`[${jobId}] Images: ${ok}/${slots.length} successful`);
 
-  for (const result of imageResults) {
-    if (!result.generatedImage) continue;
+  // Inject images
+  for (const r of results) {
+    if (!r.img) continue;
     try {
-      if (result.type === 'data-slot') {
-        const eid = result.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'g'), `$1${result.generatedImage}$2`);
-        html = html.replace(new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'g'), `$1${result.generatedImage}$2`);
-      } else if (result.type === 'background') {
-        const esc = result.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(esc, 'g'), result.generatedImage);
+      if (r.type === 'data-slot') {
+        const eid = r.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(`(<img[^>]*src=")[^"]*("[^>]*data-slot="${eid}"[^>]*>)`, 'gi'), `$1${r.img}$2`);
+        html = html.replace(new RegExp(`(<img[^>]*data-slot="${eid}"[^>]*src=")[^"]*("[^>]*>)`, 'gi'), `$1${r.img}$2`);
+      } else if (r.type === 'background') {
+        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(esc, 'g'), r.img);
       } else {
-        const esc = result.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        html = html.replace(new RegExp(`src="${esc}"`, 'g'), `src="${result.generatedImage}"`);
+        const esc = r.src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp(`src="${esc}"`, 'gi'), `src="${r.img}"`);
       }
     } catch (e) {
-      console.error(`Job ${jobId} — Inject error for ${result.id}: ${e.message}`);
+      console.error(`[${jobId}] Inject error ${r.id}: ${e.message}`);
     }
   }
 
-  const finalSizeMb = (html.length / 1024 / 1024).toFixed(2);
-  console.log(`Job ${jobId} — Pass 3 complete. Final HTML: ${html.length} chars (${finalSizeMb}MB)`);
+  console.log(`[${jobId}] Pass 3 done. HTML: ${(html.length/1024/1024).toFixed(2)}MB`);
   return html;
 }
 
@@ -505,11 +985,12 @@ app.post('/build-async', async (req, res) => {
   const jobId = Date.now().toString();
   jobs[jobId] = { status: 'pending', phase: 'starting', html: null, error: null };
 
-  console.log(`Job ${jobId} started`);
-  console.log(`userRequest length: ${userRequest?.length}`);
-  console.log(`contactEmail: ${contactEmail || 'not provided'}`);
-  console.log(`API key exists: ${!!process.env.ANTHROPIC_API_KEY}`);
-  console.log(`Google API key exists: ${!!process.env.GOOGLE_API_KEY}`);
+  console.log(`\n${'='.repeat(60)}`);
+  console.log(`[${jobId}] Job started`);
+  console.log(`[${jobId}] Request length: ${userRequest?.length}`);
+  console.log(`[${jobId}] Contact email: ${contactEmail || 'none'}`);
+  console.log(`[${jobId}] Anthropic key: ${!!process.env.ANTHROPIC_API_KEY}`);
+  console.log(`[${jobId}] Google key: ${!!process.env.GOOGLE_API_KEY}`);
 
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Connection', 'close');
@@ -518,128 +999,94 @@ app.post('/build-async', async (req, res) => {
   (async () => {
     try {
 
-      // ── PASS 1: Full site structure, design, content, logo ────────────────
-      console.log(`Job ${jobId} — Pass 1 starting (structure & design)`);
+      // ── PASS 1: Full site, all JS working, all 11 sections ─────────────────
+      console.log(`\n[${jobId}] ── PASS 1: Full site generation`);
       jobs[jobId].phase = 'pass1';
       const pass1Html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 32000);
-      console.log(`Job ${jobId} — Pass 1 complete. HTML length: ${pass1Html.length}`);
-      if (pass1Html.length < 5000) throw new Error(`Pass 1 output too short (${pass1Html.length} chars)`);
+      console.log(`[${jobId}] Pass 1 done: ${pass1Html.length} chars`);
+      if (pass1Html.length < 8000) throw new Error(`Pass 1 too short: ${pass1Html.length} chars`);
 
-      // ── PASS 2: Full JS interactivity + image slot tagging ────────────────
+      // ── PASS 2: Surgical audit — JS fixes + data-slot JSON only ───────────
+      console.log(`\n[${jobId}] ── PASS 2: Surgical audit (JS fixes + slots)`);
       jobs[jobId].phase = 'pass2';
-      console.log(`Job ${jobId} — Pass 2 starting (interactivity + image slot tagging)`);
 
-      const pass2Prompt = `You are an expert JavaScript developer and UX engineer.
-Upgrade this HTML file with two goals:
+      // Only send a compact summary to Pass 2, not the full HTML
+      // Extract img srcs and check for key JS patterns
+      const imgSrcs = [];
+      const imgPat = /src="(https?:\/\/[^"]+)"/gi;
+      let im;
+      while ((im = imgPat.exec(pass1Html)) !== null) imgSrcs.push(im[1]);
 
-GOAL 1 — COMPLETE INTERACTIVITY (every single item is mandatory):
+      const jsSummary = {
+        hasCursorDot: pass1Html.includes('cursor-dot'),
+        hasNavScroll: pass1Html.includes('scrollY') || pass1Html.includes('scroll'),
+        hasFaqAccordion: pass1Html.includes('faq-item') || pass1Html.includes('faq_item') || pass1Html.includes('[data-faq]'),
+        hasTabs: pass1Html.includes('data-tab') && pass1Html.includes('data-panel'),
+        hasCarousel: pass1Html.includes('testimonial-slide') || pass1Html.includes('data-slide'),
+        hasCounters: pass1Html.includes('data-count'),
+        hasReveal: pass1Html.includes('reveal'),
+        hasContactForm: pass1Html.includes('contact-form'),
+        hasMobileMenu: pass1Html.includes('hamburger') || pass1Html.includes('mobile-toggle'),
+        imgSrcs: imgSrcs.slice(0, 30),
+        sectionIds: (pass1Html.match(/id=["']([^"']+)["']/gi) || []).slice(0, 40).map(s => s.replace(/id=["']/,'').replace(/["']/,''))
+      };
 
-NAVBAR (CRITICAL — do this first):
-- Find the navbar/header element and remove ANY existing background color from its default CSS
-- Set default CSS: background: transparent !important; backdrop-filter: none !important;
-- Add this exact JS:
-  (function() {
-    const nav = document.querySelector('nav, header, .navbar, #navbar, #header');
-    if (!nav) return;
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 80) {
-        nav.style.background = 'rgba(10,10,10,0.97)';
-        nav.style.backdropFilter = 'blur(20px)';
-        nav.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
-      } else {
-        nav.style.background = 'transparent';
-        nav.style.backdropFilter = 'none';
-        nav.style.borderBottom = 'none';
+      const pass2Prompt = `Audit this site's JS completeness and image tags.
+Site summary:
+${JSON.stringify(jsSummary, null, 2)}
+
+Full HTML (for context):
+${pass1Html.substring(0, 12000)}
+...
+${pass1Html.substring(pass1Html.length - 4000)}
+
+Return ONLY raw JSON (no markdown, no backticks):
+{
+  "fixes": [
+    { "id": "fix-id", "description": "what it fixes", "script": "complete IIFE JS string" }
+  ],
+  "slots": [
+    { "src": "exact-src-from-html", "slot": "descriptive-slot-id" }
+  ]
+}
+
+For fixes: only add fixes for things that are genuinely missing or broken based on the summary flags.
+For slots: create one entry per unique img src in imgSrcs, with a descriptive slot name.`;
+
+      let pass2Json = { fixes: [], slots: [] };
+      try {
+        const pass2Raw = await callClaudeRaw(PASS2_SYSTEM_PROMPT, pass2Prompt, 8000);
+        console.log(`[${jobId}] Pass 2 raw length: ${pass2Raw.length}`);
+        pass2Json = safeParseJson(pass2Raw);
+        console.log(`[${jobId}] Pass 2: ${pass2Json.fixes?.length || 0} fixes, ${pass2Json.slots?.length || 0} slots`);
+      } catch (err) {
+        console.error(`[${jobId}] Pass 2 parse failed: ${err.message} — proceeding with Pass 1 only`);
       }
-    });
-  })();
 
-CUSTOM CURSOR (CRITICAL — must be animated):
-- Create: <div id="custom-cursor"></div> at top of body
-- CSS: #custom-cursor { position:fixed; width:20px; height:20px; border-radius:50%; pointer-events:none; z-index:9999; transition: width 0.2s, height 0.2s, opacity 0.2s; mix-blend-mode:difference; }
-- Set background color to the site's primary accent color
-- JS lerp animation:
-  (function() {
-    let curX = 0, curY = 0, tgX = 0, tgY = 0;
-    const cursor = document.getElementById('custom-cursor');
-    if (!cursor) return;
-    document.addEventListener('mousemove', e => { tgX = e.clientX; tgY = e.clientY; });
-    function animCursor() {
-      curX += (tgX - curX) / 8;
-      curY += (tgY - curY) / 8;
-      cursor.style.transform = 'translate(' + (curX - 10) + 'px,' + (curY - 10) + 'px)';
-      requestAnimationFrame(animCursor);
-    }
-    animCursor();
-    document.querySelectorAll('a,button,[role="button"]').forEach(el => {
-      el.addEventListener('mouseenter', () => { cursor.style.width='40px'; cursor.style.height='40px'; cursor.style.opacity='0.7'; });
-      el.addEventListener('mouseleave', () => { cursor.style.width='20px'; cursor.style.height='20px'; cursor.style.opacity='1'; });
-    });
-  })();
-- NEVER set cursor:none anywhere
+      // Apply surgical fixes + slots to Pass 1 HTML
+      let html = applyPass2(pass1Html, pass2Json);
+      console.log(`[${jobId}] After Pass 2 injection: ${html.length} chars`);
 
-FILTER TABS (CRITICAL — all must work):
-- Add data-tab="tabname" to every tab/filter button
-- Add data-tab-content="tabname" to every matching content container
-- JS:
-  (function() {
-    const tabs = document.querySelectorAll('[data-tab]');
-    const contents = document.querySelectorAll('[data-tab-content]');
-    if (!tabs.length) return;
-    function showTab(name) {
-      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-      contents.forEach(c => { c.style.display = c.dataset.tabContent === name ? 'block' : 'none'; });
-    }
-    tabs.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
-    showTab(tabs[0].dataset.tab);
-  })();
+      // Inject contact email
+      if (contactEmail) {
+        html = injectContactEmail(html, contactEmail);
+        console.log(`[${jobId}] Contact email injected`);
+      }
 
-FAQ ACCORDION (CRITICAL):
-- Every FAQ item MUST have a complete written answer — if any answer is missing write 2-4 sentences now
-- One open at a time, smooth max-height animation
+      // Safety net: ensure contact form exists
+      html = ensureContactSection(html);
 
-CAROUSELS: All prev/next wrap around, auto-advance 5s, dots clickable and update
-COUNTERS: Count up using IntersectionObserver when scrolled into view
-FORMS: Validate required fields, show styled success message on submit
-SMOOTH SCROLL: All anchor links scroll smoothly
-MOBILE MENU: Hamburger opens/closes nav overlay
-
-SCROLL REVEALS:
-- NEVER set opacity:0 in CSS on content elements
-- JS: document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('js-ready'); document.querySelectorAll('.reveal').forEach(el => { new IntersectionObserver((entries) => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('revealed'); }); }, {threshold:0.1}).observe(el); }); });
-- CSS: .js-ready .reveal { opacity:0; transform:translateY(30px); transition:opacity 0.7s ease,transform 0.7s ease; } .js-ready .reveal.revealed { opacity:1; transform:translateY(0); }
-
-GOAL 2 — IMAGE SLOT TAGGING (CRITICAL):
-Add data-slot to EVERY <img> tag — unique specific description of what image belongs there.
-Good: data-slot="hero-background-professional-plumber-toronto-basement-dark-pipes"
-Bad: data-slot="image-1" or data-slot="photo" or data-slot="img"
-Every single <img> tag gets a unique descriptive data-slot — no exceptions.
-
-Do NOT change any design, colors, fonts, logo, or layout from Pass 1.
-Return the COMPLETE updated HTML file — every line, nothing truncated or abbreviated.
-
-HTML TO UPGRADE:
-${pass1Html}`;
-
-      const pass2Html = await callClaude(
-        'You are an expert JavaScript developer. Output ONLY a complete HTML file starting with <!DOCTYPE html>. Return every single line — never truncate or abbreviate.',
-        pass2Prompt,
-        32000
-      );
-      console.log(`Job ${jobId} — Pass 2 complete. HTML length: ${pass2Html.length}`);
-
-      // Inject Formsubmit contact email
-      const htmlWithForm = contactEmail ? injectContactEmail(pass2Html, contactEmail) : pass2Html;
-      if (contactEmail) console.log(`Job ${jobId} — Contact form injected for: ${contactEmail}`);
-
-      // ── PASS 3: Branded image generation & injection ──────────────────────
+      // ── PASS 3: Image generation ───────────────────────────────────────────
+      console.log(`\n[${jobId}] ── PASS 3: Image generation`);
       jobs[jobId].phase = 'pass3';
-      const finalHtml = await injectBrandedImages(htmlWithForm, userRequest, jobId);
-      jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
+      const finalHtml = await injectBrandedImages(html, userRequest, jobId);
 
-    } catch (error) {
-      console.error(`Job ${jobId} error:`, error.message);
-      jobs[jobId] = { status: 'error', phase: 'error', error: error.message };
+      jobs[jobId] = { status: 'done', phase: 'complete', html: finalHtml };
+      console.log(`\n[${jobId}] ✓ Complete. Final: ${(finalHtml.length/1024/1024).toFixed(2)}MB`);
+
+    } catch (err) {
+      console.error(`[${jobId}] Fatal error: ${err.message}`);
+      jobs[jobId] = { status: 'error', phase: 'error', error: err.message };
     }
   })();
 });
@@ -655,8 +1102,8 @@ app.post('/build', async (req, res) => {
   try {
     const html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, 16000);
     res.json({ html });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -665,17 +1112,17 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/test-image', async (req, res) => {
-  console.log('Test image endpoint hit');
+  console.log('[test-image] Testing Imagen 3');
   const result = await generateImageWithRetry(
-    'A premium luxury skincare serum bottle on white marble, cinematic lighting, no text, professional photography', '1:1', 2
+    'A premium luxury skincare serum bottle on white marble, soft studio lighting, no text, no watermarks, professional product photography',
+    '1:1', 2
   );
   if (result) {
-    const sizeKb = Math.round(result.length / 1024);
-    res.json({ success: true, message: `Image generated and compressed — ${sizeKb}kb base64` });
+    res.json({ success: true, message: `OK — ${Math.round(result.length/1024)}kb` });
   } else {
-    res.json({ success: false, message: 'Image generation failed — check deploy logs' });
+    res.json({ success: false, message: 'Failed — check logs' });
   }
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => { console.log(`Axier build server running on port ${PORT}`); });
+app.listen(PORT, () => console.log(`Axier build server running on port ${PORT}`));
