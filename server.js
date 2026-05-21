@@ -790,7 +790,7 @@ async function generateImage(prompt, aspectRatio = '1:1') {
         parameters: {
           sampleCount: 1,
           aspectRatio: normalizeAspectRatio(aspectRatio),
-          safetySetting: 'block_only_high',
+          safetySetting: 'block_low_and_above',
           personGeneration: 'allow_adult',
         }
       })
