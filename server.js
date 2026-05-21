@@ -12,7 +12,18 @@ const jobs = {};
 const MASTER_SYSTEM_PROMPT = `You are an elite brand designer and frontend developer.
 Build one complete, polished, upload-ready single-page website as one HTML file.
 
-The website must feel premium, complete, and functional.
+The website MUST feel like a fully finished production website that could immediately be uploaded to the internet with no missing sections, no broken interactions, no empty areas, and no unfinished layouts.
+
+The first generated version must already feel complete.
+
+Do NOT generate partial landing pages.
+Do NOT generate concept layouts.
+Do NOT generate incomplete designs.
+Do NOT stop after hero sections.
+Do NOT create giant empty spaces.
+Do NOT rely on future edits to complete the website.
+
+Every section must be fully designed, populated, styled, and functional.
 
 REQUIRED OUTPUT:
 - Raw HTML only.
@@ -40,6 +51,17 @@ REQUIRED SITE QUALITY:
 
 REQUIRED WEBSITE SECTIONS:
 Hero, stats/proof, services/features, about/story, portfolio/results/process, team/providers, testimonials/reviews, FAQ, contact, footer.
+
+IMAGE REQUIREMENTS:
+- Every premium website must contain REAL photography sections.
+- Use actual <img> tags throughout the site.
+- Minimum 8 image elements.
+- Use placehold.co only for image src values.
+- Every image should include a useful data-slot value.
+- Include galleries, feature imagery, lifestyle imagery, products, environments, or portraits depending on industry.
+- Do NOT rely primarily on SVG graphics or abstract decorations.
+- Decorative SVGs are allowed only as accents.
+- Real image layouts are mandatory.
 
 Important:
 Do not create narrow side-panel-only layouts for the full page.
@@ -184,7 +206,6 @@ function getGuaranteedContactSection(contactEmail) {
   </div>
 </section>`;
 }
-
 function ensureContactSection(html, contactEmail) {
   if (/<form[^>]*id=["']contact-form["'][^>]*>/i.test(html)) {
     return injectContactEmail(html, contactEmail);
@@ -305,6 +326,7 @@ function ensureCursorElement(html) {
   if (html.includes('id="cursor-dot"')) return html;
   return html.replace(/<body[^>]*>/i, match => `${match}\n<div id="cursor-dot"></div>`);
 }
+
 function getCoreJs() {
   return `
 <script id="axier-core-js">
@@ -449,7 +471,7 @@ function getCoreJs() {
       counters.forEach(function(el){ io.observe(el); });
     })();
 
-    (function(){
+        (function(){
       var items = document.querySelectorAll('.faq-item,[data-faq]');
       if(!items.length) return;
 
@@ -710,50 +732,69 @@ Return ONLY the improved full HTML document.
   return repaired;
 }
 
-
-
 async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
   try {
     const matches = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!matches) return base64DataUrl;
 
     const inputBuffer = Buffer.from(matches[2], 'base64');
+
     const outputBuffer = await sharp(inputBuffer)
-      .resize(targetWidthPx, null, { withoutEnlargement: true, fit: 'inside' })
-      .jpeg({ quality: 82, progressive: true })
+      .resize(targetWidthPx, null, {
+        withoutEnlargement: true,
+        fit: 'inside'
+      })
+      .jpeg({
+        quality: 82,
+        progressive: true
+      })
       .toBuffer();
 
-    console.log(`  Compressed: ${Math.round(inputBuffer.length / 1024)}kb → ${Math.round(outputBuffer.length / 1024)}kb`);
+    console.log(
+      `  Compressed: ${Math.round(inputBuffer.length / 1024)}kb → ${Math.round(outputBuffer.length / 1024)}kb`
+    );
+
     return `data:image/jpeg;base64,${outputBuffer.toString('base64')}`;
   } catch (err) {
-    console.error('  Compression error:', err.message);
+    console.error('Compression error:', err.message);
     return base64DataUrl;
   }
 }
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 22000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1200000);
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 1200000);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: process.env.CLAUDE_BUILD_MODEL || 'claude-sonnet-4-6',
-        max_tokens: maxTokens,
-        stream: true,
-        system: systemPrompt + HTML_OUTPUT_RULES,
-        messages: [{ role: 'user', content: userMessage }]
-      }),
-      signal: controller.signal
-    });
+    const response = await fetch(
+      'https://api.anthropic.com/v1/messages',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: process.env.CLAUDE_BUILD_MODEL || 'claude-sonnet-4-6',
+          max_tokens: maxTokens,
+          stream: true,
+          system: systemPrompt + HTML_OUTPUT_RULES,
+          messages: [
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ]
+        }),
+        signal: controller.signal
+      }
+    );
 
-    if (!response.ok) {
+      if (!response.ok) {
       const errText = await response.text();
       throw new Error(`Anthropic HTTP ${response.status}: ${errText.substring(0, 500)}`);
     }
@@ -768,6 +809,7 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 22000) {
 
       reader.on('data', chunk => {
         buffer += decoder.decode(chunk, { stream: true });
+
         const lines = buffer.split('\n');
         buffer = lines.pop();
 
@@ -775,11 +817,17 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 22000) {
           if (!line.startsWith('data: ')) continue;
 
           const data = line.slice(6).trim();
+
           if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+
+            if (
+              parsed.type === 'content_block_delta' &&
+              parsed.delta &&
+              parsed.delta.type === 'text_delta'
+            ) {
               fullText += parsed.delta.text;
               chunkCount++;
 
@@ -795,7 +843,10 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 22000) {
       reader.on('error', reject);
     });
 
-    if (!fullText) throw new Error('Claude stream returned empty response');
+    if (!fullText) {
+      throw new Error('Claude stream returned empty response');
+    }
+
     return cleanHtml(fullText);
   } finally {
     clearTimeout(timeout);
@@ -804,34 +855,58 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 22000) {
 
 async function callClaudeJson(userMessage, maxTokens = 3500) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 120000);
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 120000);
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: process.env.CLAUDE_JSON_MODEL || 'claude-haiku-4-5-20251001',
-        max_tokens: maxTokens,
-        system: 'You return raw valid JSON only. No markdown. No explanation.',
-        messages: [{ role: 'user', content: userMessage }]
-      }),
-      signal: controller.signal
-    });
+    const response = await fetch(
+      'https://api.anthropic.com/v1/messages',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: process.env.CLAUDE_JSON_MODEL || 'claude-haiku-4-5-20251001',
+          max_tokens: maxTokens,
+          system: 'You return raw valid JSON only. No markdown. No explanation.',
+          messages: [
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ]
+        }),
+        signal: controller.signal
+      }
+    );
 
     const data = await response.json();
-    if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
 
-    let raw = data.content?.[0]?.text || '';
-    raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+    if (data.error) {
+      throw new Error(`Anthropic error: ${data.error.message}`);
+    }
+
+    let raw = data.content && data.content[0] && data.content[0].text
+      ? data.content[0].text
+      : '';
+
+    raw = raw
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/```\s*$/i, '')
+      .trim();
 
     const startArray = raw.indexOf('[');
     const endArray = raw.lastIndexOf(']');
-    if (startArray !== -1 && endArray !== -1) raw = raw.substring(startArray, endArray + 1);
+
+    if (startArray !== -1 && endArray !== -1) {
+      raw = raw.substring(startArray, endArray + 1);
+    }
 
     return JSON.parse(raw);
   } finally {
@@ -850,7 +925,9 @@ function detectIndustry(text) {
     text.includes('diamond') ||
     text.includes('luxury jewelry') ||
     text.includes('earrings')
-  ) return 'jewelry';
+  ) {
+    return 'jewelry';
+  }
 
   if (
     text.includes('med spa') ||
@@ -860,15 +937,27 @@ function detectIndustry(text) {
     text.includes('botox') ||
     text.includes('filler') ||
     text.includes('laser clinic')
-  ) return 'aesthetics_clinic';
+  ) {
+    return 'aesthetics_clinic';
+  }
 
-  if (text.includes('fashion') || text.includes('clothing')) return 'fashion';
-  if (text.includes('restaurant')) return 'restaurant';
-  if (text.includes('coffee')) return 'coffee';
-  if (text.includes('fitness')) return 'fitness';
-  if (text.includes('real estate')) return 'real_estate';
-  if (text.includes('technology') || text.includes('saas')) return 'technology';
-  if (text.includes('music')) return 'music';
+  if (text.includes('nail') || text.includes('manicure') || text.includes('pedicure')) return 'nail_salon';
+  if (text.includes('skincare') || text.includes('cosmetic') || text.includes('beauty')) return 'skincare';
+  if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) return 'fashion';
+  if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) return 'restaurant';
+  if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
+  if (text.includes('fitness') || text.includes('gym') || text.includes('workout')) return 'fitness';
+  if (text.includes('real estate') || text.includes('property')) return 'real_estate';
+  if (text.includes('technology') || text.includes('tech') || text.includes('software') || text.includes('saas')) return 'technology';
+  if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
+  if (text.includes('photography') || text.includes('photographer')) return 'photography';
+  if (text.includes('hotel') || text.includes('resort') || text.includes('travel')) return 'hospitality';
+  if (text.includes('wellness') || text.includes('spa') || text.includes('yoga')) return 'wellness';
+  if (text.includes('plumb') || text.includes('hvac') || text.includes('electrician') || text.includes('contractor')) return 'trades';
+  if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
+  if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
+  if (text.includes('aerospace') || text.includes('rocket') || text.includes('space') || text.includes('satellite')) return 'aerospace';
+  if (text.includes('landing') || text.includes('app')) return 'saas';
 
   return 'business';
 }
@@ -880,7 +969,7 @@ function getImageCap(industry) {
     fashion: 14,
     skincare: 12,
     restaurant: 12,
-    jewelry: 12,
+    jewelry: 14,
     hospitality: 12,
     aesthetics_clinic: 14,
     wellness: 10,
@@ -910,11 +999,20 @@ async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts =
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const result = await generateImage(prompt, aspectRatio);
-      if (result) return result;
-      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1500));
+
+      if (result) {
+        return result;
+      }
+
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     } catch (err) {
-      console.error(`  Image attempt ${attempt} error: ${err.message}`);
-      if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 1500));
+      console.error(`Image attempt ${attempt} error: ${err.message}`);
+
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
   }
 
@@ -924,19 +1022,27 @@ async function generateImageWithRetry(prompt, aspectRatio = '1:1', maxAttempts =
 async function generateImage(prompt, aspectRatio = '1:1') {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
+
     if (!apiKey) {
-      console.error('  GOOGLE_API_KEY not set');
+      console.error('GOOGLE_API_KEY not set');
       return null;
     }
 
     const model = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predict?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
-        instances: [{ prompt }],
+        instances: [
+          {
+            prompt
+          }
+        ],
         parameters: {
           sampleCount: 1,
           aspectRatio: normalizeAspectRatio(aspectRatio),
@@ -949,21 +1055,27 @@ async function generateImage(prompt, aspectRatio = '1:1') {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(`  Image API error [${model}]:`, JSON.stringify(data).substring(0, 500));
+      console.error(`Image API error [${model}]:`, JSON.stringify(data).substring(0, 500));
       return null;
     }
 
-    const prediction = data.predictions?.[0];
+    const prediction = data.predictions && data.predictions[0]
+      ? data.predictions[0]
+      : null;
 
-    if (!prediction?.bytesBase64Encoded) {
-      console.error('  No bytesBase64Encoded in image response');
+    if (!prediction || !prediction.bytesBase64Encoded) {
+      console.error('No bytesBase64Encoded in image response');
       return null;
     }
 
     const mimeType = prediction.mimeType || 'image/png';
-    return await compressBase64Image(`data:${mimeType};base64,${prediction.bytesBase64Encoded}`, 1200);
+
+    return await compressBase64Image(
+      `data:${mimeType};base64,${prediction.bytesBase64Encoded}`,
+      1200
+    );
   } catch (err) {
-    console.error('  generateImage error:', err.message);
+    console.error('generateImage error:', err.message);
     return null;
   }
 }
@@ -980,14 +1092,22 @@ function extractImageSlots(html) {
   while ((m = withDataSlot1.exec(html)) !== null) {
     if (!seen.has(m[1])) {
       seen.add(m[1]);
-      slots.push({ id: m[1], src: m[2], type: 'data-slot' });
+      slots.push({
+        id: m[1],
+        src: m[2],
+        type: 'data-slot'
+      });
     }
   }
 
   while ((m = withDataSlot2.exec(html)) !== null) {
     if (!seen.has(m[2])) {
       seen.add(m[2]);
-      slots.push({ id: m[2], src: m[1], type: 'data-slot' });
+      slots.push({
+        id: m[2],
+        src: m[1],
+        type: 'data-slot'
+      });
     }
   }
 
@@ -1004,7 +1124,12 @@ function extractImageSlots(html) {
     while ((m = pat.exec(html)) !== null) {
       if (!seen.has(m[1])) {
         seen.add(m[1]);
-        slots.push({ id: `placeholder-${slots.length}`, src: m[1], type: 'src' });
+
+        slots.push({
+          id: `placeholder-${slots.length}`,
+          src: m[1],
+          type: 'src'
+        });
       }
     }
   }
@@ -1014,10 +1139,15 @@ function extractImageSlots(html) {
   while ((m = bgPat.exec(html)) !== null) {
     if (!seen.has(m[1]) && !m[1].startsWith('data:')) {
       seen.add(m[1]);
-      const ctx = html.substring(Math.max(0, m.index - 200), m.index).toLowerCase();
+
+      const ctx = html
+        .substring(Math.max(0, m.index - 200), m.index)
+        .toLowerCase();
 
       slots.push({
-        id: ctx.includes('hero') || ctx.includes('banner') ? 'hero-background-fullscreen' : `background-${slots.length}`,
+        id: ctx.includes('hero') || ctx.includes('banner')
+          ? 'hero-background-fullscreen'
+          : `background-${slots.length}`,
         src: m[1],
         type: 'background'
       });
@@ -1034,9 +1164,12 @@ async function injectBrandedImages(html, userRequest, jobId) {
   const cap = getImageCap(industry);
 
   const rawSlots = extractImageSlots(html);
+
   console.log(`[${jobId}] Industry: ${industry} | Found slots: ${rawSlots.length} | Cap: ${cap}`);
 
-  if (!rawSlots.length) return html;
+  if (!rawSlots.length) {
+    return html;
+  }
 
   const slots = rawSlots.slice(0, cap);
 
@@ -1078,25 +1211,34 @@ ${slots.map((s, i) => `${i}. ${s.id}`).join('\n')}
     }));
   }
 
-  const results = await Promise.all(slots.map(async (slot, i) => {
-    const entry = promptData.find(p => Number(p.index) === i) || promptData[i];
+  const results = await Promise.all(
+    slots.map(async (slot, i) => {
+      const entry = promptData.find(p => Number(p.index) === i) || promptData[i];
 
-    if (!entry?.prompt) {
-      return { ...slot, img: null };
-    }
+      if (!entry || !entry.prompt) {
+        return {
+          ...slot,
+          img: null
+        };
+      }
 
-    console.log(`[${jobId}] Generating image [${i + 1}/${slots.length}]: ${slot.id}`);
+      console.log(`[${jobId}] Generating image [${i + 1}/${slots.length}]: ${slot.id}`);
 
-    const img = await generateImageWithRetry(
-      `${entry.prompt}, no text, no watermarks, no logos, professional photography`,
-      entry.aspect_ratio || '1:1',
-      2
-    );
+      const img = await generateImageWithRetry(
+        `${entry.prompt}, no text, no watermarks, no logos, professional photography`,
+        entry.aspect_ratio || '1:1',
+        2
+      );
 
-    return { ...slot, img };
-  }));
+      return {
+        ...slot,
+        img
+      };
+    })
+  );
 
   const ok = results.filter(r => r.img).length;
+
   console.log(`[${jobId}] Images successful: ${ok}/${slots.length}`);
 
   for (const r of results) {
@@ -1118,7 +1260,10 @@ ${slots.map((s, i) => `${i}. ${s.id}`).join('\n')}
       } else if (r.type === 'background') {
         html = html.replace(new RegExp(escapeRegExp(r.src), 'g'), r.img);
       } else {
-        html = html.replace(new RegExp(`src=["']${escapeRegExp(r.src)}["']`, 'gi'), `src="${r.img}"`);
+        html = html.replace(
+          new RegExp(`src=["']${escapeRegExp(r.src)}["']`, 'gi'),
+          `src="${r.img}"`
+        );
       }
     } catch (err) {
       console.error(`[${jobId}] Image inject error for ${r.id}: ${err.message}`);
@@ -1126,6 +1271,7 @@ ${slots.map((s, i) => `${i}. ${s.id}`).join('\n')}
   }
 
   console.log(`[${jobId}] Pass 3 done. HTML size: ${(html.length / 1024 / 1024).toFixed(2)}MB`);
+
   return html;
 }
 
@@ -1163,7 +1309,11 @@ app.post('/build-async', async (req, res) => {
       jobs[jobId].phase = 'pass1';
       console.log(`[${jobId}] PASS 1: Claude full website generation`);
 
-      let html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, Number(process.env.CLAUDE_MAX_TOKENS || 22000));
+      let html = await callClaude(
+        MASTER_SYSTEM_PROMPT,
+        userRequest,
+        Number(process.env.CLAUDE_MAX_TOKENS || 22000)
+      );
 
       if (html.length < 5000) {
         throw new Error(`Generated HTML too short: ${html.length}`);
@@ -1174,39 +1324,37 @@ app.post('/build-async', async (req, res) => {
 
       html = finalQualityEnforce(html, userRequest, contactEmail);
 
-     let beforeImagesReport = getQualityReport(html);
+      let beforeImagesReport = getQualityReport(html);
 
-console.log(
-  `[${jobId}] Quality before images:`,
-  JSON.stringify(beforeImagesReport)
-);
+      console.log(`[${jobId}] Quality before images:`, JSON.stringify(beforeImagesReport));
 
-html = await expandIncompleteWebsite(
-  html,
-  userRequest,
-  beforeImagesReport,
-  jobId
-);
+      html = await expandIncompleteWebsite(
+        html,
+        userRequest,
+        beforeImagesReport,
+        jobId
+      );
 
-beforeImagesReport = getQualityReport(html);
+      html = finalQualityEnforce(html, userRequest, contactEmail);
 
-console.log(
-  `[${jobId}] Quality AFTER expansion:`,
-  JSON.stringify(beforeImagesReport)
-);
+      beforeImagesReport = getQualityReport(html);
 
-jobs[jobId].phase = 'pass3-images';
+      console.log(`[${jobId}] Quality AFTER expansion:`, JSON.stringify(beforeImagesReport));
 
-html = await injectBrandedImages(
-  html,
-  userRequest,
-  jobId
-);
+      jobs[jobId].phase = 'pass3-images';
+
+      html = await injectBrandedImages(
+        html,
+        userRequest,
+        jobId
+      );
 
       jobs[jobId].phase = 'final-quality';
+
       html = finalQualityEnforce(html, userRequest, contactEmail);
 
       const finalReport = getQualityReport(html);
+
       console.log(`[${jobId}] Final quality report:`, JSON.stringify(finalReport));
 
       jobs[jobId] = {
@@ -1242,9 +1390,31 @@ app.post('/build', async (req, res) => {
       throw new Error('Missing ANTHROPIC_API_KEY');
     }
 
-    let html = await callClaude(MASTER_SYSTEM_PROMPT, userRequest, Number(process.env.CLAUDE_MAX_TOKENS || 22000));
+    let html = await callClaude(
+      MASTER_SYSTEM_PROMPT,
+      userRequest,
+      Number(process.env.CLAUDE_MAX_TOKENS || 22000)
+    );
+
     html = finalQualityEnforce(html, userRequest, contactEmail);
-    html = await injectBrandedImages(html, userRequest, 'sync');
+
+    let report = getQualityReport(html);
+
+    html = await expandIncompleteWebsite(
+      html,
+      userRequest,
+      report,
+      'sync'
+    );
+
+    html = finalQualityEnforce(html, userRequest, contactEmail);
+
+    html = await injectBrandedImages(
+      html,
+      userRequest,
+      'sync'
+    );
+
     html = finalQualityEnforce(html, userRequest, contactEmail);
 
     res.json({
@@ -1252,7 +1422,9 @@ app.post('/build', async (req, res) => {
       report: getQualityReport(html)
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
@@ -1260,7 +1432,9 @@ app.get('/job/:jobId', (req, res) => {
   const job = jobs[req.params.jobId];
 
   if (!job) {
-    return res.status(404).json({ error: 'Job not found' });
+    return res.status(404).json({
+      error: 'Job not found'
+    });
   }
 
   res.json(job);
@@ -1285,7 +1459,9 @@ app.get('/test-image', async (req, res) => {
 
   res.json({
     success: !!result,
-    message: result ? `OK — ${Math.round(result.length / 1024)}kb` : 'Failed — check logs'
+    message: result
+      ? `OK — ${Math.round(result.length / 1024)}kb`
+      : 'Failed — check logs'
   });
 });
 
@@ -1293,7 +1469,13 @@ app.get('/', (req, res) => {
   res.json({
     name: 'Axier Build Server',
     status: 'running',
-    endpoints: ['/build-async', '/job/:jobId', '/build', '/health', '/test-image']
+    endpoints: [
+      '/build-async',
+      '/job/:jobId',
+      '/build',
+      '/health',
+      '/test-image'
+    ]
   });
 });
 
