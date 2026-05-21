@@ -22,38 +22,29 @@ REQUIRED OUTPUT:
 - CSS inside <style>.
 - JS inside <script>.
 - No markdown.
-- No comments outside HTML.
 - No external JS libraries.
 
-REQUIRED SECTIONS:
-1. fixed navbar
-2. hero
-3. stats
-4. services/products/features
-5. about/story
-6. portfolio/process/featured work
-7. team
-8. testimonials
-9. FAQ
-10. contact
-11. footer
-
-REQUIRED QUALITY:
+REQUIRED SITE QUALITY:
 - Make all content specific to the user's business/request.
 - No lorem ipsum.
 - No empty sections.
 - No placeholder buttons that do nothing.
 - Use CSS variables: --c-bg, --c-surface, --c-accent, --c-accent2, --c-text, --c-text-muted.
-- Use premium typography through Google Fonts @import.
+- Use premium typography.
 - Use placehold.co images for all image slots. These will be replaced later.
-- Use real section IDs: hero, stats, services, about, portfolio, team, testimonials, faq, contact.
 - Include a hidden SVG logo symbol with id="brand-logo".
-- Use <svg><use href="#brand-logo"></use></svg> for logo placement.
 - Contact form must use id="contact-form" and action="CONTACT_FORM_ENDPOINT".
-- Include buttons/tabs/carousels only if the matching HTML structure is complete.
+- If using tabs, each data-tab must have a matching data-panel.
+- If using carousels, include prev/next buttons and slides.
+- Build a complete first version that could be uploaded immediately.
+
+REQUIRED WEBSITE SECTIONS:
+Hero, stats/proof, services/features, about/story, portfolio/results/process, team/providers, testimonials/reviews, FAQ, contact, footer.
 
 Important:
-Create a complete first version. The user should be able to upload this page immediately.`;
+Do not create narrow side-panel-only layouts for the full page.
+Use normal vertical scrolling sections.
+Use full-width page sections unless a specific component is intentionally split layout.`;
 
 const HTML_OUTPUT_RULES = `
 ABSOLUTE OUTPUT RULES:
@@ -140,10 +131,6 @@ function injectContactEmail(html, contactEmail) {
   return html;
 }
 
-function removeExistingContactSection(html) {
-  return html.replace(/<section[^>]*id=["']contact["'][\s\S]*?<\/section>/i, '');
-}
-
 function getGuaranteedContactSection(contactEmail) {
   const endpoint = `https://formsubmit.co/${String(contactEmail).trim()}`;
 
@@ -154,16 +141,6 @@ function getGuaranteedContactSection(contactEmail) {
       <p style="color:var(--c-accent,#D4A853);font-size:.78rem;letter-spacing:4px;text-transform:uppercase;margin:0 0 16px;">Contact</p>
       <h2 style="font-size:clamp(2.2rem,5vw,4.2rem);line-height:1;margin:0 0 22px;color:var(--c-text,#fff);font-weight:900;">Start the conversation</h2>
       <p style="color:var(--c-text-muted,rgba(255,255,255,.62));font-size:1.08rem;line-height:1.8;max-width:520px;margin:0 0 28px;">Send a message and the team will follow up with details, availability, and next steps.</p>
-      <div style="display:grid;gap:14px;margin-top:34px;">
-        <div style="padding:18px 20px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);border-radius:18px;color:var(--c-text,#fff);">
-          <strong style="display:block;margin-bottom:6px;">Fast response</strong>
-          <span style="color:var(--c-text-muted,rgba(255,255,255,.6));">Messages are routed directly to the requested contact email.</span>
-        </div>
-        <div style="padding:18px 20px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.035);border-radius:18px;color:var(--c-text,#fff);">
-          <strong style="display:block;margin-bottom:6px;">Project ready</strong>
-          <span style="color:var(--c-text-muted,rgba(255,255,255,.6));">The form is fully wired and ready for live deployment.</span>
-        </div>
-      </div>
     </div>
 
     <div style="border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.055);box-shadow:0 30px 90px rgba(0,0,0,.35);backdrop-filter:blur(18px);border-radius:28px;padding:32px;">
@@ -209,7 +186,10 @@ function getGuaranteedContactSection(contactEmail) {
 }
 
 function ensureContactSection(html, contactEmail) {
-  html = removeExistingContactSection(html);
+  if (/<form[^>]*id=["']contact-form["'][^>]*>/i.test(html)) {
+    return injectContactEmail(html, contactEmail);
+  }
+
   const section = getGuaranteedContactSection(contactEmail);
 
   if (/<footer/i.test(html)) {
@@ -271,18 +251,9 @@ function ensureLogo(html, userRequest) {
         <stop offset="0%" stop-color="var(--c-accent,#D4A853)"/>
         <stop offset="100%" stop-color="var(--c-accent2,#E8B4C8)"/>
       </linearGradient>
-      <filter id="brandLogoGlow">
-        <feGaussianBlur stdDeviation="3" result="blur"/>
-        <feMerge>
-          <feMergeNode in="blur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
     </defs>
-    <g filter="url(#brandLogoGlow)">
-      <circle cx="35" cy="35" r="25" fill="url(#brandLogoGradient)" opacity=".95"/>
-      <path d="M24 46 L35 18 L47 46 M29 38 H42" fill="none" stroke="#060408" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+    <circle cx="35" cy="35" r="25" fill="url(#brandLogoGradient)" opacity=".95"/>
+    <path d="M24 46 L35 18 L47 46 M29 38 H42" fill="none" stroke="#060408" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
     <text x="76" y="42" fill="#fff" font-size="25" font-weight="900" letter-spacing="3" font-family="Arial, sans-serif">${name.toUpperCase().replace(/&/g, '&amp;')}</text>
     <line x1="76" y1="50" x2="210" y2="50" stroke="var(--c-accent,#D4A853)" stroke-width="2" opacity=".55"/>
   </symbol>
@@ -294,26 +265,17 @@ function ensureLogo(html, userRequest) {
 function ensureRootStyles(html) {
   const rootVars = `
 <style id="axier-core-fallback-styles">
-:root{
-  --c-bg: var(--c-bg,#07050a);
-  --c-surface: var(--c-surface,#121018);
-  --c-accent: var(--c-accent,#D4A853);
-  --c-accent2: var(--c-accent2,#E8B4C8);
-  --c-text: var(--c-text,#ffffff);
-  --c-text-muted: var(--c-text-muted,rgba(255,255,255,.62));
-}
 html{scroll-behavior:smooth;}
-body{margin:0;overflow-x:hidden;background:var(--c-bg,#07050a);color:var(--c-text,#fff);}
+body{
+  margin:0;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
 img{max-width:100%;}
-a,button{transition:transform .25s ease,opacity .25s ease,background .25s ease,border-color .25s ease,color .25s ease;}
-button:hover,a:hover{transform:translateY(-1px);}
 input:focus,textarea:focus{
   border-color:var(--c-accent,#D4A853)!important;
   box-shadow:0 0 0 4px rgba(212,168,83,.14)!important;
 }
-.reveal{opacity:1;transform:none;transition:opacity .75s ease,transform .75s ease;}
-.js-loaded .reveal{opacity:0;transform:translateY(26px);}
-.js-loaded .reveal.visible{opacity:1;transform:translateY(0);}
 #cursor-dot{
   position:fixed;
   width:12px;
@@ -332,11 +294,10 @@ input:focus,textarea:focus{
 @media(max-width:760px){
   .axier-contact-section > div{grid-template-columns:1fr!important;}
   .axier-contact-section form > div{grid-template-columns:1fr!important;}
-  footer > div > div:first-child{grid-template-columns:1fr!important;}
 }
 </style>`;
 
-  if (html.includes('id="axier-core-fallback-styles"')) return html;
+  html = html.replace(/<style[^>]*id=["']axier-core-fallback-styles["'][\s\S]*?<\/style>/i, '');
   return html.replace('</head>', rootVars + '\n</head>');
 }
 
@@ -344,7 +305,6 @@ function ensureCursorElement(html) {
   if (html.includes('id="cursor-dot"')) return html;
   return html.replace(/<body[^>]*>/i, match => `${match}\n<div id="cursor-dot"></div>`);
 }
-
 function getCoreJs() {
   return `
 <script id="axier-core-js">
@@ -357,7 +317,6 @@ function getCoreJs() {
   ready(function(){
     document.body.classList.add('js-loaded');
 
-    // Cursor
     (function(){
       var dot = document.getElementById('cursor-dot');
       if(!dot) return;
@@ -366,9 +325,6 @@ function getCoreJs() {
       var my = window.innerHeight / 2;
       var cx = mx;
       var cy = my;
-
-      dot.style.left = cx + 'px';
-      dot.style.top = cy + 'px';
 
       document.addEventListener('mousemove', function(e){
         mx = e.clientX;
@@ -393,30 +349,6 @@ function getCoreJs() {
       })();
     })();
 
-    // Navbar scroll
-    (function(){
-      var nav = document.querySelector('nav,header,.navbar,#navbar');
-      if(!nav) return;
-
-      function update(){
-        if(window.scrollY > 70){
-          nav.style.background = 'rgba(6,4,8,.94)';
-          nav.style.backdropFilter = 'blur(18px)';
-          nav.style.webkitBackdropFilter = 'blur(18px)';
-          nav.style.borderBottom = '1px solid rgba(255,255,255,.08)';
-        } else {
-          nav.style.background = 'transparent';
-          nav.style.backdropFilter = 'none';
-          nav.style.webkitBackdropFilter = 'none';
-          nav.style.borderBottom = 'none';
-        }
-      }
-
-      window.addEventListener('scroll', update, { passive:true });
-      update();
-    })();
-
-    // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(function(a){
       a.addEventListener('click', function(e){
         var href = a.getAttribute('href');
@@ -429,9 +361,24 @@ function getCoreJs() {
       });
     });
 
-    // Mobile menu
     (function(){
-      var btn = document.querySelector('.hamburger,.mobile-toggle,#mobile-toggle,[data-mobile-toggle]');
+      var nav = document.querySelector('nav,header,.navbar,#navbar');
+      if(!nav) return;
+
+      function update(){
+        if(window.scrollY > 70){
+          nav.classList.add('scrolled');
+        } else {
+          nav.classList.remove('scrolled');
+        }
+      }
+
+      window.addEventListener('scroll', update, { passive:true });
+      update();
+    })();
+
+    (function(){
+      var btn = document.querySelector('.hamburger,.mobile-toggle,#mobile-toggle,[data-mobile-toggle],.nav-hamburger');
       var menu = document.querySelector('.mobile-menu,.nav-overlay,#mobile-menu,[data-mobile-menu]');
       if(!btn || !menu) return;
 
@@ -451,9 +398,8 @@ function getCoreJs() {
       });
     })();
 
-    // Reveals
     (function(){
-      var items = document.querySelectorAll('.reveal, section > div, .card, article');
+      var items = document.querySelectorAll('.reveal,.slide-left,.slide-right,.scale-in');
       if(!items.length) return;
 
       if(!('IntersectionObserver' in window)){
@@ -470,13 +416,9 @@ function getCoreJs() {
         });
       }, { threshold:.08, rootMargin:'0px 0px -40px 0px' });
 
-      items.forEach(function(el){
-        if(!el.classList.contains('reveal')) el.classList.add('reveal');
-        io.observe(el);
-      });
+      items.forEach(function(el){ io.observe(el); });
     })();
 
-    // Counters
     (function(){
       var counters = document.querySelectorAll('[data-count]');
       if(!counters.length) return;
@@ -507,27 +449,21 @@ function getCoreJs() {
       counters.forEach(function(el){ io.observe(el); });
     })();
 
-    // FAQ
     (function(){
       var items = document.querySelectorAll('.faq-item,[data-faq]');
       if(!items.length) return;
 
       items.forEach(function(item){
-        var q = item.querySelector('.faq-question,[data-faq-q],button,h3,h4');
-        var a = item.querySelector('.faq-answer,[data-faq-a],p,div:last-child');
-        if(!q || !a || q === a) return;
-
-        a.style.maxHeight = item.classList.contains('open') ? a.scrollHeight + 'px' : '0';
-        a.style.overflow = 'hidden';
-        a.style.transition = 'max-height .35s ease';
-        q.style.cursor = 'pointer';
+        var q = item.querySelector('.faq-question,[data-faq-q]');
+        var a = item.querySelector('.faq-answer,[data-faq-a]');
+        if(!q || !a) return;
 
         q.addEventListener('click', function(){
           var open = item.classList.contains('open');
 
           items.forEach(function(other){
             other.classList.remove('open');
-            var oa = other.querySelector('.faq-answer,[data-faq-a],p,div:last-child');
+            var oa = other.querySelector('.faq-answer,[data-faq-a]');
             if(oa) oa.style.maxHeight = '0';
           });
 
@@ -539,7 +475,6 @@ function getCoreJs() {
       });
     })();
 
-    // Tabs / filters
     (function(){
       var tabs = document.querySelectorAll('[data-tab]');
       var panels = document.querySelectorAll('[data-panel]');
@@ -548,7 +483,6 @@ function getCoreJs() {
       function show(name){
         tabs.forEach(function(tab){
           tab.classList.toggle('active', tab.dataset.tab === name);
-          tab.setAttribute('aria-selected', tab.dataset.tab === name ? 'true' : 'false');
         });
 
         panels.forEach(function(panel){
@@ -567,22 +501,29 @@ function getCoreJs() {
       show(tabs[0].dataset.tab);
     })();
 
-    // Generic carousels
     (function(){
       var slides = document.querySelectorAll('.testimonial-slide,[data-slide]');
-      if(!slides.length) return;
+      var track = document.querySelector('.testimonials-track');
+      var cards = document.querySelectorAll('.testimonial-card');
+      var prev = document.querySelector('.carousel-prev,[data-prev],.test-nav-btn.prev,.test-prev');
+      var next = document.querySelector('.carousel-next,[data-next],.test-nav-btn.next,.test-next');
+      var dots = document.querySelectorAll('.carousel-dot,[data-dot],.test-dot');
 
-      var dots = document.querySelectorAll('.carousel-dot,[data-dot]');
-      var prev = document.querySelector('.carousel-prev,[data-prev]');
-      var next = document.querySelector('.carousel-next,[data-next]');
+      if(!slides.length && !cards.length) return;
+
+      var set = slides.length ? slides : cards;
       var cur = 0;
 
       function show(n){
-        cur = ((n % slides.length) + slides.length) % slides.length;
+        cur = ((n % set.length) + set.length) % set.length;
 
-        slides.forEach(function(slide, i){
-          slide.style.display = i === cur ? 'block' : 'none';
+        if(track){
+          track.style.transform = 'translateX(' + (-cur * 33.333) + '%)';
+        }
+
+        set.forEach(function(slide, i){
           slide.classList.toggle('active', i === cur);
+          if(slides.length) slide.style.display = i === cur ? 'block' : 'none';
         });
 
         dots.forEach(function(dot, i){
@@ -598,13 +539,11 @@ function getCoreJs() {
       });
 
       show(0);
-      setInterval(function(){ show(cur + 1); }, 5000);
     })();
 
-    // Contact form validation
     (function(){
       var form = document.getElementById('contact-form');
-      var success = document.getElementById('contact-success');
+      var success = document.getElementById('contact-success') || document.querySelector('.form-success');
       if(!form) return;
 
       form.addEventListener('submit', function(e){
@@ -632,8 +571,8 @@ function getCoreJs() {
 
         if(success){
           setTimeout(function(){
-            form.style.opacity = '.55';
             success.style.display = 'block';
+            success.classList.add('show');
           }, 300);
         }
       });
@@ -646,53 +585,6 @@ function getCoreJs() {
 function ensureCoreJs(html) {
   html = html.replace(/<script[^>]*id=["']axier-core-js["'][\s\S]*?<\/script>/i, '');
   return html.replace('</body>', getCoreJs() + '\n</body>');
-}
-
-function ensureSectionIds(html) {
-  const ids = ['hero', 'stats', 'services', 'about', 'portfolio', 'team', 'testimonials', 'faq'];
-
-  for (const id of ids) {
-    const exists = new RegExp(`id=["']${id}["']`, 'i').test(html);
-    if (exists) continue;
-
-    const fallback = `
-<section id="${id}" class="reveal" style="padding:90px 24px;background:var(--c-bg,#07050a);">
-  <div style="max-width:1100px;margin:0 auto;">
-    <p style="color:var(--c-accent,#D4A853);letter-spacing:4px;text-transform:uppercase;font-size:.78rem;margin:0 0 12px;">${id}</p>
-    <h2 style="color:var(--c-text,#fff);font-size:clamp(2rem,4vw,3.5rem);margin:0 0 18px;text-transform:capitalize;">${id.replace('-', ' ')}</h2>
-    <p style="color:var(--c-text-muted,rgba(255,255,255,.62));font-size:1.05rem;line-height:1.8;max-width:760px;">This section has been added as a fallback to keep the website complete and launch-ready. It can be customized further in the next edit.</p>
-  </div>
-</section>`;
-
-    html = html.replace(/<section[^>]*id=["']contact["']/i, fallback + '\n<section id="contact"');
-  }
-
-  return html;
-}
-
-function ensureMinimumImages(html, industry) {
-  const current = (html.match(/<img\b/gi) || []).length;
-  const needed = Math.max(0, 8 - current);
-
-  if (needed <= 0) return html;
-
-  let imgs = '';
-  for (let i = 1; i <= needed; i++) {
-    imgs += `<img src="https://placehold.co/600x400" data-slot="auto-${industry}-gallery-${i}" alt="${industry} image ${i}" style="width:100%;height:280px;object-fit:cover;border-radius:20px;border:1px solid rgba(255,255,255,.08);">\n`;
-  }
-
-  const gallery = `
-<section id="visual-gallery" class="reveal" style="padding:80px 24px;background:var(--c-surface,#121018);">
-  <div style="max-width:1180px;margin:0 auto;">
-    <p style="color:var(--c-accent,#D4A853);letter-spacing:4px;text-transform:uppercase;font-size:.78rem;margin:0 0 12px;">Gallery</p>
-    <h2 style="color:var(--c-text,#fff);font-size:clamp(2rem,4vw,3.4rem);margin:0 0 30px;">A closer look</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px;">
-      ${imgs}
-    </div>
-  </div>
-</section>`;
-
-  return html.replace(/<section[^>]*id=["']contact["']/i, gallery + '\n<section id="contact"');
 }
 
 function validateTabs(html) {
@@ -708,30 +600,11 @@ function validateTabs(html) {
   };
 }
 
-function injectMissingPanels(html) {
-  const validation = validateTabs(html);
-  if (!validation.missingPanels.length) return html;
-
-  let panels = '';
-  validation.missingPanels.forEach(name => {
-    panels += `
-<div data-panel="${name}" style="display:none;padding:28px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:rgba(255,255,255,.035);">
-  <h3 style="color:var(--c-text,#fff);margin:0 0 12px;text-transform:capitalize;">${name.replace(/-/g, ' ')}</h3>
-  <p style="color:var(--c-text-muted,rgba(255,255,255,.62));line-height:1.7;margin:0;">This panel was automatically added so every interactive tab has matching content.</p>
-</div>`;
-  });
-
-  return html.replace(/<section[^>]*id=["']portfolio["'][\s\S]*?<\/section>/i, match => {
-    return match.replace('</section>', panels + '\n</section>');
-  });
-}
-
 function getQualityReport(html) {
-  const required = ['hero', 'stats', 'services', 'about', 'portfolio', 'team', 'testimonials', 'faq', 'contact'];
-  const missingSections = required.filter(id => !new RegExp(`id=["']${id}["']`, 'i').test(html));
+  const sections = [...html.matchAll(/<section[^>]*id=["']([^"']+)["']/gi)].map(m => m[1]);
 
   return {
-    missingSections,
+    sectionIds: sections,
     hasLogo: /id=["']brand-logo["']/i.test(html),
     hasContactForm: /id=["']contact-form["']/i.test(html),
     hasRealContactEndpoint: /formsubmit\.co/i.test(html),
@@ -743,18 +616,13 @@ function getQualityReport(html) {
 }
 
 function finalQualityEnforce(html, userRequest, contactEmail) {
-  const industry = detectIndustry(userRequest);
-
   html = cleanHtml(html);
   html = ensureRootStyles(html);
   html = ensureLogo(html, userRequest);
   html = ensureCursorElement(html);
   html = ensureFooter(html);
-  html = ensureSectionIds(html);
-  html = injectMissingPanels(html);
   html = ensureContactSection(html, contactEmail);
   html = injectContactEmail(html, contactEmail);
-  html = ensureMinimumImages(html, industry);
   html = ensureCoreJs(html);
 
   return html;
@@ -890,12 +758,13 @@ async function callClaudeJson(userMessage, maxTokens = 3500) {
 function detectIndustry(text) {
   text = String(text || '').toLowerCase();
 
+  if (text.includes('med spa') || text.includes('medspa') || text.includes('aesthetic') || text.includes('injectable') || text.includes('botox') || text.includes('filler') || text.includes('laser') || text.includes('clinic') || text.includes('medical')) return 'aesthetics_clinic';
   if (text.includes('nail') || text.includes('manicure') || text.includes('pedicure')) return 'nail_salon';
+  if (text.includes('skincare') || text.includes('cosmetic') || text.includes('beauty')) return 'skincare';
   if (text.includes('coffee') || text.includes('cafe') || text.includes('espresso')) return 'coffee';
   if (text.includes('fashion') || text.includes('clothing') || text.includes('apparel')) return 'fashion';
   if (text.includes('restaurant') || text.includes('dining') || text.includes('food')) return 'restaurant';
   if (text.includes('fitness') || text.includes('gym') || text.includes('workout')) return 'fitness';
-  if (text.includes('skincare') || text.includes('cosmetic') || text.includes('beauty')) return 'skincare';
   if (text.includes('robot') || text.includes('robotics')) return 'robotics';
   if (text.includes('jewelry') || text.includes('jewellery')) return 'jewelry';
   if (text.includes('hotel') || text.includes('resort') || text.includes('travel')) return 'hospitality';
@@ -905,7 +774,6 @@ function detectIndustry(text) {
   if (text.includes('music') || text.includes('band') || text.includes('artist')) return 'music';
   if (text.includes('photography') || text.includes('photographer')) return 'photography';
   if (text.includes('plumb') || text.includes('hvac') || text.includes('electrician') || text.includes('contractor')) return 'trades';
-  if (text.includes('clinic') || text.includes('medical') || text.includes('aesthetic') || text.includes('med spa') || text.includes('medspa')) return 'aesthetics_clinic';
   if (text.includes('store') || text.includes('shop') || text.includes('ecommerce') || text.includes('product')) return 'ecommerce';
   if (text.includes('portfolio') || text.includes('agency') || text.includes('creative')) return 'portfolio';
   if (text.includes('aerospace') || text.includes('rocket') || text.includes('space') || text.includes('satellite')) return 'aerospace';
@@ -923,7 +791,7 @@ function getImageCap(industry) {
     restaurant: 12,
     jewelry: 12,
     hospitality: 12,
-    aesthetics_clinic: 12,
+    aesthetics_clinic: 14,
     wellness: 10,
     fitness: 10,
     real_estate: 10,
@@ -1296,7 +1164,7 @@ app.get('/health', (req, res) => {
 
 app.get('/test-image', async (req, res) => {
   const result = await generateImageWithRetry(
-    'A premium luxury website hero image, cinematic lighting, elegant composition, no text, no watermarks, no logos, professional photography',
+    'A premium luxury med spa clinic interior, warm bronze lighting, elegant treatment room, cinematic composition, no text, no watermarks, no logos, professional photography',
     '16:9',
     2
   );
