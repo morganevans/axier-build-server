@@ -194,7 +194,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 900000);
+  const timeout = setTimeout(() => controller.abort(), 1200000);
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
