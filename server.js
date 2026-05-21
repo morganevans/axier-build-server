@@ -623,6 +623,7 @@ async function compressBase64Image(base64DataUrl, targetWidthPx = 1200) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
+  // Uses streaming so Railway never kills the connection during long generations
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 1200000);
   try {
@@ -636,16 +637,57 @@ async function callClaude(systemPrompt, userMessage, maxTokens = 32000) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: maxTokens,
+        stream: true,
         system: systemPrompt + HTML_OUTPUT_RULES,
         messages: [{ role: 'user', content: userMessage }]
       }),
       signal: controller.signal
     });
-    const data = await response.json();
-    if (data.error) throw new Error(`Anthropic error: ${data.error.message}`);
-    const text = data.content[0].text;
-    console.log(`  Claude response: ${text.length} chars`);
-    return cleanHtml(text);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Anthropic HTTP ${response.status}: ${errText.substring(0, 200)}`);
+    }
+
+    // Read the stream and accumulate the full text
+    let fullText = '';
+    let chunkCount = 0;
+    const decoder = new TextDecoder();
+    const reader = response.body;
+
+    // node-fetch returns a Node.js readable stream
+    await new Promise((resolve, reject) => {
+      let buffer = '';
+      reader.on('data', (chunk) => {
+        buffer += decoder.decode(chunk, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep incomplete line in buffer
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+              fullText += parsed.delta.text;
+              chunkCount++;
+              // Log progress every 100 chunks so Railway sees activity
+              if (chunkCount % 100 === 0) {
+                console.log(`  Streaming... ${fullText.length} chars received`);
+              }
+            }
+          } catch (e) {
+            // skip malformed SSE lines
+          }
+        }
+      });
+      reader.on('end', resolve);
+      reader.on('error', reject);
+    });
+
+    console.log(`  Claude stream complete: ${fullText.length} chars`);
+    if (!fullText) throw new Error('Stream returned empty response');
+    return cleanHtml(fullText);
   } finally {
     clearTimeout(timeout);
   }
